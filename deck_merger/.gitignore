@@ -1,0 +1,15 @@
+.env
+.venv/
+
+# Cursor：版控 rules／skills；其餘（除錯紀錄等）留在本機
+.cursor/**
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/skills/
+!.cursor/skills/**
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+dist/
+*.egg-info/

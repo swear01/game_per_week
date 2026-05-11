@@ -1,0 +1,7 @@
+# deck_merger — 從專案根目錄執行: pip install -r requirements.txt
+# 需要 Python >=3.14（見 pyproject.toml）
+
+# 可編輯安裝 + 測試（pytest）+ LLM 驅動（litellm、python-dotenv）
+-e ".[dev,llm]"
+
+# 若只要本體、不要測試與 LLM：改為單行 `-e .`

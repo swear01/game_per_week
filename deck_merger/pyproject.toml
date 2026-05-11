@@ -1,0 +1,27 @@
+[project]
+name = "deck-merger"
+version = "0.1.0"
+description = "Terminal prototype for deck_merger"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+llm = ["litellm>=1.55.0", "python-dotenv>=1.0.0"]
+
+[project.scripts]
+deck-merger = "deck_merger.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["deck_merger"]
+
+[tool.setuptools.package-dir]
+deck_merger = "src"
