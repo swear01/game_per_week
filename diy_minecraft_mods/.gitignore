@@ -5,5 +5,9 @@
 npm-debug.log*
 yarn-error.log*
 
+# Python
+**/__pycache__/
+*.py[cod]
+
 # 本機 Claude 設定
 .claude/settings.local.json
