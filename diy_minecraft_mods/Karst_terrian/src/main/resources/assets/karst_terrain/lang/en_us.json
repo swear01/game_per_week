@@ -1,0 +1,6 @@
+{
+  "block.karst_terrain.limestone": "Limestone",
+  "block.karst_terrain.weathered_limestone": "Weathered Limestone",
+  "biome.karst_terrain.karst_highlands": "Karst Highlands",
+  "itemGroup.karst_terrain": "Karst Terrain"
+}

@@ -1,0 +1,7 @@
+{
+  "entity.generic.eat": {
+    "sounds": [
+      "minecraft:random/eat1"
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Minecraft Sound Effects"
+  short_description: "Generate Minecraft OGG sound assets."
+  default_prompt: "Use $minecraft-sound-effects to generate or import Minecraft OGG sound effects, update sounds.json, and report sound assets for mods and resource packs."

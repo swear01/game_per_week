@@ -1,0 +1,4 @@
+interface:
+  display_name: "Minecraft Texture Replicate"
+  short_description: "Generate Minecraft textures via Replicate."
+  default_prompt: "Use $minecraft-texture-replicate to generate a Minecraft item or block texture, save it as a game-ready PNG, and document the prompt and settings."

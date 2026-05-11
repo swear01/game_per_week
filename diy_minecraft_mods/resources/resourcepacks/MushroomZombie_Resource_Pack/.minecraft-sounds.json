@@ -1,0 +1,67 @@
+{
+  "spec": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/mushroom-zombie-resource-pack-spec.json",
+  "assets_root": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets",
+  "namespace": "minecraft",
+  "results": [
+    {
+      "id": "entity.zombie.ambient",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/ambient.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.hurt",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/hurt.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.death",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/death.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.step",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/step.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.attack_wooden_door",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/attack_wooden_door.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.attack_iron_door",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/attack_iron_door.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.break_wooden_door",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/break_wooden_door.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.converted_to_drowned",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/converted_to_drowned.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.destroy_egg",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/destroy_egg.ogg",
+      "status": "ok",
+      "exit_code": 0
+    },
+    {
+      "id": "entity.zombie.infect",
+      "file": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/assets/minecraft/sounds/entity/mushroom_zombie/infect.ogg",
+      "status": "ok",
+      "exit_code": 0
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "display_name": "Cantaloupe 1.21.1 Resource Pack",
+  "minecraft_version": "1.21.1",
+  "texture_size": 16,
+  "resource_pack": {
+    "namespace": "minecraft",
+    "description": "1.21.1 vanilla override: melon becomes cantaloupe with softer eating sounds",
+    "icon_prompt": "Minecraft resource pack thumbnail, single centered cantaloupe block icon, tan netted rind with bright orange flesh wedge cut, pixel art square emblem, bold readable silhouette, plain warm beige background, no text, no UI, no border",
+    "icon_size": 128
+  },
+  "texture_overrides": [
+    {
+      "target": "block/melon_side",
+      "type": "block",
+      "texture_prompt": "seamless square Minecraft vanilla block texture tile, cantaloupe outside rind, tan beige netted rough skin, subtle green undertone, original 16x16 Minecraft style, flat texture, no border, no text"
+    },
+    {
+      "target": "block/melon_top",
+      "type": "block",
+      "texture_prompt": "seamless square Minecraft vanilla block texture tile, cantaloupe top face, warm orange flesh fills most of the tile, thin tan beige rind around edge, subtle seed dots, original 16x16 Minecraft pixel art style, flat texture, no gray, no white background, no border, no text"
+    },
+    {
+      "target": "block/melon_stem",
+      "type": "item",
+      "texture_prompt": "Minecraft vanilla transparent pixel texture, young cantaloupe stem, small curved green vine sprout like vanilla melon stem, readable silhouette at 16x16, transparent background, no fruit, no text, no UI",
+      "transparent_texture": true
+    },
+    {
+      "target": "block/attached_melon_stem",
+      "type": "item",
+      "texture_prompt": "Minecraft vanilla transparent pixel texture, attached cantaloupe stem, green vine bending sideways like vanilla attached melon stem, readable at 16x16, transparent background, no fruit, no text, no UI",
+      "transparent_texture": true
+    },
+    {
+      "target": "item/melon_slice",
+      "type": "item",
+      "texture_prompt": "single centered Minecraft vanilla item texture sprite, cantaloupe slice, orange soft flesh, tan green rind, readable at 16x16, original Minecraft style pixel art, transparent background, no text, no UI",
+      "transparent_texture": true
+    },
+    {
+      "target": "item/glistering_melon_slice",
+      "type": "item",
+      "texture_prompt": "single centered Minecraft vanilla item texture sprite, glistering cantaloupe slice, orange soft flesh, golden sparkle trim, readable at 16x16, original Minecraft style pixel art, transparent background, no text, no UI",
+      "transparent_texture": true
+    },
+    {
+      "target": "item/melon_seeds",
+      "type": "item",
+      "texture_prompt": "single centered Minecraft vanilla item texture sprite, three or four small pale tan cantaloupe seeds, separated seeds, readable at 16x16, original Minecraft style pixel art, transparent background, no bag, no pile, no text, no UI",
+      "transparent_texture": true
+    }
+  ],
+  "lang": {
+    "en_us": {
+      "block.minecraft.melon": "Cantaloupe",
+      "item.minecraft.melon_slice": "Cantaloupe Slice",
+      "item.minecraft.glistering_melon_slice": "Glistering Cantaloupe",
+      "item.minecraft.melon_seeds": "Cantaloupe Seeds"
+    },
+    "zh_tw": {
+      "block.minecraft.melon": "哈密瓜",
+      "item.minecraft.melon_slice": "哈密瓜片",
+      "item.minecraft.glistering_melon_slice": "鑲金哈密瓜",
+      "item.minecraft.melon_seeds": "哈密瓜種子"
+    },
+    "zh_cn": {
+      "block.minecraft.melon": "哈密瓜",
+      "item.minecraft.melon_slice": "哈密瓜片",
+      "item.minecraft.glistering_melon_slice": "金哈密瓜",
+      "item.minecraft.melon_seeds": "哈密瓜种子"
+    }
+  },
+  "sounds": [
+    {
+      "id": "entity.generic.eat",
+      "file": "random/eat1",
+      "prompt": "short soft wet cantaloupe bite, muted juicy pulp chew, gentle low crunch, dry game sound effect, no voice, no music",
+      "duration_seconds": 1.0,
+      "prompt_influence": 0.6
+    }
+  ]
+}

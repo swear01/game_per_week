@@ -1,0 +1,26 @@
+{
+  "created_at_utc": "20260507T040135Z",
+  "type": "item",
+  "subject": "1.21.1 原版覆寫：殭屍改為三眼蘑菇殭屍（皮膚 + 殭屍音效）",
+  "model": "retro-diffusion/rd-fast",
+  "style": "portrait",
+  "tileable": false,
+  "prompt": "Minecraft in-game style, one giant mob head filling almost the entire square canvas edge-to-edge like a scaled-up player head icon, chunky blocky pixels, mushroom zombie face: bright red fly agaric cap with big white spots covering top, three small eyes in a horizontal row on the face front, creepy fungal skin, no torso no shoulders no neck, minimal void gray background only in extreme corners if needed, no frame, no text, no UI",
+  "size": 128,
+  "reference_image": null,
+  "img2img": false,
+  "input": {
+    "prompt": "Minecraft in-game style, one giant mob head filling almost the entire square canvas edge-to-edge like a scaled-up player head icon, chunky blocky pixels, mushroom zombie face: bright red fly agaric cap with big white spots covering top, three small eyes in a horizontal row on the face front, creepy fungal skin, no torso no shoulders no neck, minimal void gray background only in extreme corners if needed, no frame, no text, no UI",
+    "style": "portrait",
+    "width": 128,
+    "height": 128,
+    "num_images": 1,
+    "tile_x": false,
+    "tile_y": false,
+    "remove_bg": false,
+    "bypass_prompt_expansion": true
+  },
+  "final_png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/mushroom_zombie_1_21_1/MushroomZombie_Resource_Pack/pack.png",
+  "preview_png": null,
+  "raw_png": null
+}

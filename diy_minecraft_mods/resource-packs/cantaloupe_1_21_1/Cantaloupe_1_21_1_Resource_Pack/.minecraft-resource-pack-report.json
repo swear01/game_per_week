@@ -1,0 +1,76 @@
+{
+  "spec": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/cantaloupe-resource-pack-spec.json",
+  "output": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack",
+  "namespace": "minecraft",
+  "pack_format": 34,
+  "textures_skipped": false,
+  "texture_results": [
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/block/melon_side",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/block/melon_side.png"
+    },
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/block/melon_top",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/block/melon_top.png"
+    },
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/block/melon_stem",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/block/melon_stem.png"
+    },
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/block/attached_melon_stem",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/block/attached_melon_stem.png"
+    },
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/item/melon_slice",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/item/melon_slice.png"
+    },
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/item/glistering_melon_slice",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/item/glistering_melon_slice.png"
+    },
+    {
+      "type": "texture_override",
+      "id": "minecraft:textures/item/melon_seeds",
+      "status": "ok",
+      "exit_code": 0,
+      "png": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/assets/minecraft/textures/item/melon_seeds.png"
+    }
+  ],
+  "sounds_skipped": false,
+  "sound_result": {
+    "report": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/.minecraft-sounds.json",
+    "exit_code": 0,
+    "status": "ok"
+  },
+  "pack_icon_skipped": false,
+  "pack_icon_result": {
+    "status": "ok",
+    "exit_code": 0,
+    "path": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack/pack.png",
+    "mode": "replicate",
+    "size": 128,
+    "prompt": "Minecraft resource pack thumbnail, single centered cantaloupe block icon, tan netted rind with bright orange flesh wedge cut, pixel art square emblem, bold readable silhouette, plain warm beige background, no text, no UI, no border"
+  },
+  "zip": "/Users/swearprom1/Documents/DIY_MC_mods/resource-packs/cantaloupe_1_21_1/Cantaloupe_1_21_1_Resource_Pack.zip",
+  "errors": [],
+  "passed": true
+}

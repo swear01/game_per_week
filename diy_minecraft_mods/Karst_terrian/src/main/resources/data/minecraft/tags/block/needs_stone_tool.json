@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "karst_terrain:limestone",
+    "karst_terrain:weathered_limestone"
+  ]
+}
