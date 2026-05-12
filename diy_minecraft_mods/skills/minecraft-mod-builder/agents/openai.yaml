@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Mod Builder"
-  short_description: "Automate spec to jar mod builds."
-  default_prompt: "Use $minecraft-mod-builder to build a complete Minecraft mod from a spec, generate textures, run Gradle, and report outputs."

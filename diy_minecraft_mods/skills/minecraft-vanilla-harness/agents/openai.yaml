@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Vanilla Harness"
-  short_description: "Check specs against vanilla Minecraft."
-  default_prompt: "Use $minecraft-vanilla-harness to fetch the target Minecraft version index and check a mod spec for vanilla duplicates before building."

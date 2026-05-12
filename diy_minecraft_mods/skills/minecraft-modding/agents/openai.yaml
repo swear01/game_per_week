@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Modding"
-  short_description: "Build Fabric and NeoForge Minecraft mods."
-  default_prompt: "Use $minecraft-modding to inspect this Minecraft mod project, add the requested feature, generate required assets, and verify with Gradle."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Mod Scaffold"
-  short_description: "Create mod projects from web templates."
-  default_prompt: "Use $minecraft-mod-scaffold to fetch a current Minecraft mod template, scaffold the project from spec, and prepare the base files."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Modeling"
-  short_description: "Create custom Blockbench models."
-  default_prompt: "Use $minecraft-modeling to create non-default Minecraft item or block models, export model files, and hand them back to the mod pipeline."

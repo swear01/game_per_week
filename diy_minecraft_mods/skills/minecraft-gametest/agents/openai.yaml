@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft GameTest"
-  short_description: "Generate and run Minecraft mod GameTests."
-  default_prompt: "Use $minecraft-gametest to add loader-specific GameTest scaffolding, run available Gradle test tasks, and write a Minecraft test report."

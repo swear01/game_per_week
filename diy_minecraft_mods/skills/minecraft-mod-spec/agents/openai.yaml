@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Mod Spec"
-  short_description: "Turn mod ideas into structured specs."
-  default_prompt: "Use $minecraft-mod-spec to turn this Minecraft mod idea into a validated mod-spec file."

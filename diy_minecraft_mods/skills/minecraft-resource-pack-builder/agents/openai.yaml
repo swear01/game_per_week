@@ -1,4 +1,0 @@
-interface:
-  display_name: "Minecraft Resource Pack Builder"
-  short_description: "Build Minecraft Java resource packs."
-  default_prompt: "Use $minecraft-resource-pack-builder to create pack.mcmeta, assets, models, textures, sounds, validation reports, and a zip resource pack."
