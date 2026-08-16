@@ -1,5 +1,6 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Modding;
+using VakuuPlayer.Patches;
 
 namespace VakuuPlayer;
 
@@ -10,5 +11,6 @@ public static class ModEntry
     public static void Initialize()
     {
         new Harmony("vakuuplayer.mod").PatchAll(typeof(ModEntry).Assembly);
+        NeowDialoguePatch.Initialize();
     }
 }
