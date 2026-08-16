@@ -154,6 +154,7 @@ Expected `git status` after archiving:
 
 ## Project Rules (STS2 mod)
 - 權威研究筆記: `RESEARCH.md`（遊戲版本/API 契約/工具鏈）— 寫 code 前必讀、更新時同步維護
+- 本 repo 的 AGENTS.md/docs 由 **agents_rule** 工具管理（`~/.agents/skills/agent-rules/agents_rule --project "$PWD" <init|extend|docs|archive>`）— 不要自創其他 agent 同步機制（如 `.skillshare/agents/`）
 - 遊戲版本基線: v0.111.0 (2026-08-13), net9.0, macOS arm64。EA 每 1–2 週更新，寫 patch 前反編譯 `sts2.dll` 核對簽名，不憑記憶
 - 引用遊戲自帶 `sts2.dll`/`0Harmony.dll`/`GodotSharp.dll`（`Private=false`），**不用 NuGet 版**
 - 集成優先序: 模型 override → 語義 Hook → Harmony（精確 target，不 blanket patch）
