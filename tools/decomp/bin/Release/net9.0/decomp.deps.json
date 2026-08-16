@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "decomp/1.0.0": {
+        "dependencies": {
+          "ICSharpCode.Decompiler": "11.0.0.9375"
+        },
+        "runtime": {
+          "decomp.dll": {}
+        }
+      },
+      "ICSharpCode.Decompiler/11.0.0.9375": {
+        "runtime": {
+          "ICSharpCode.Decompiler.dll": {
+            "assemblyVersion": "11.0.0.9375",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "decomp/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ICSharpCode.Decompiler/11.0.0.9375": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

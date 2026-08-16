@@ -28,6 +28,12 @@
 
 ⚠️ 待用戶決策：全拿含負面嗎？還是只拿正面 6 件？
 
+## 設計決策（2026-08-16 用戶確認）
+- ✅ **遺物全拿，含負面效果**（-9 血、+2 詛咒、+3 Wish、+1 Enthralled、+Folly 全要）
+- ✅ **每回合接管**：沿襲低語耳環原始邏輯 — 瓦庫從左到右自動打牌，直到沒牌/沒能量/打滿 13 張
+- ✅ **藥水時機**：瓦庫打完牌、控制權還給玩家後，玩家才能用藥水等剩餘操作（與原遺物一致）
+- 接管順序/終止條件/控制權歸還：全部沿用 WhisperingEarring 原始實作，只把「第一回合」改為「每回合」
+
 ## 技術方案（三部分）
 
 ### A. 玩家貼圖 → 瓦庫（外觀）
@@ -45,6 +51,41 @@
 - 現成機制：WhisperingEarring（第一回合接管）— 左→右自動打牌，直到沒牌/沒能量/13 張後還控制權
 - 改法：反編譯找 WhisperingEarring 實作 → Harmony patch 把「僅第一回合」改成「每回合開始都接管」；或獨立 hook 每回合開始複製其邏輯
 - 設計問題：玩家是完全旁觀（純自動）還是可干預？接管順序規則沿用原遺物邏輯
+
+### 貼圖研究結果（2026-08-16，pck 解包確認）
+- **玩家角色 = Spine 骨骼動畫**：`animations/characters/<角色>/<角色>.skel + .atlas + .png`（ironclad/silent/defect/regent/necrobinder）
+- **瓦庫沒有 Spine 資源**，只有：
+  - `images/ancients/vakuu_placeholder.png`（2560×1200 大立繪，事件背景 `scenes/events/background_scenes/vakuu.tscn` 用它）
+  - `images/ui/run_history/vakuu.png`（85×85 小頭像，LA8）
+  - `images/packed/map/ancients/ancient_node_vakuu.png`（地圖圖示）
+  - `images/relics/vakuus_cape.png`（遺物圖）
+- 原始 png 不在 pck 內（Godot export 只存 `.ctex` 壓縮紋理，GST2 格式）
+- 貼圖方案候選：
+  - A. 玩家角色節點 → 瓦庫大立繪（靜態圖代替 Spine 動畫，需 patch 角色載入）
+  - B. 替換 Spine atlas 貼圖（骨骼動作套瓦庫圖，效果差）
+  - C. 只換肖像/HUD 頭像（最簡單）
+- 待反編譯 `sts2.dll` 確認：角色載入點、WhisperingEarring 實作、起始遺物流程
+
+### 反編譯研究結果（2026-08-16，sts2.dll v0.111.0 實測）
+
+**接管機制（完整）**：`MegaCrit.Sts2.Core.Models.Relics.WhisperingEarring`
+- `AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext, Player)` override — 遊戲每回合經過 AutoPrePlayPhase（Late）時調用所有遺物此方法
+- 接管條件：`Owner.PlayerCombatState.TurnNumber <= 1` ← **只接管第一回合的開關**
+- 流程：`CardSelectCmd.PushSelector(new VakuuCardSelector())`（左→右 row-major 選牌）→ 循環：<13 張 && 戰鬥未結束 && 玩家未按結束回合 && 仍同回合 → 手牌取 `CanPlay()` 的牌 → `GetTarget`（敵人=最左，友方=隨機）→ `card.SpendResources()` → `CardCmd.AutoPlay(choiceContext, card, target, AutoPlayType.Default, true, false)`
+- 打完 TalkCmd 台詞（approval/warning）
+- 藥水限制：PushSelector 期間玩家不能操作，天然滿足「瓦庫打完才能用藥水」
+- **每回合接管改法：Harmony Transpiler patch 把 `TurnNumber <= 1` 比較改為恆真**（或改成 `TurnNumber >= 0`）
+
+**開局遺物**：`MegaCrit.Sts2.Core.Models.Characters.<角色> : CharacterModel`，`StartingRelics` getter（如 Ironclad → BurningBlood）；消費點 `RunManager.FinalizeStartingRelics()`（角色選擇流程中）
+- 改法：patch 各角色 `StartingRelics` getter（Postfix 追加瓦庫 10 件）或 hook FinalizeStartingRelics
+- 10 件遺物類名確認：`WhisperingEarring` `BloodSoakedRose` `Fiddle` `PreservedFog` `SereTalon` `DistinguishedCape` `ChoicesParadox` `MusicBox` `LordsParasol` `JeweledMask`（全在 `MegaCrit.Sts2.Core.Models.Relics`）
+
+**貼圖（未完成）**：玩家 = Spine（`MegaCrit.Sts2.Core.Bindings.MegaSpine`），角色類在 `Models.Characters`；瓦庫無 Spine。替換方案 A/C 的具體載入點待查（角色顯示節點實例化位置）
+
+## 已建立工具鏈（本 repo `tools/`）
+- `pcktool/` — 自寫 Godot pck 解包器（v3 格式，自動掃尾找目錄；用法 `list <pck> <filter>` / `extract <pck> <out> <filter>`）
+- `decomp/` — 基於 ILSpy 庫的類型反編譯器（`decomp <dll> <typeFilter>`）
+- 外部：`~/.dotnet`（.NET 9.0.317，brew cask 需 sudo 改用官方 installer）、`~/.local/tools/ilspy`（ILSpy GUI 包內庫）
 
 ## 下一步（需工具）
 1. `brew install dotnet-sdk`（編譯必需）
