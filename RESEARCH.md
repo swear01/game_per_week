@@ -166,13 +166,15 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 ### 联动建议
 做 STS2 mod 时可以把模组专属 agent（如 "STS2 反编译助手"）写成一个 .md 放进 `~/.config/skillshare/agents`，然后 `skillshare sync agents` 分发到 claude/cursor/opencode。
 
-### 本项目已配置（2026-08-16 实测）
-- 项目级配置：`.skillshare/config.yaml`（targets 用列表格式：`- name: claude` + `agents: {path, mode}`）
-- Agent 源：`.skillshare/agents/`（已提交到 repo，团队共享）
-- 已创建 agent：**`sts2-modder.md`**（STS2 mod 开发助手：版本基线、mod 结构、Harmony 优先级、构建部署、Workshop 上传）
-- 目标：claude（`~/.claude/agents`）、cursor（`~/.cursor/agents`）、opencode（`~/.config/opencode/agents`），全部 merge 模式，已有本地 agent（如 paper-reader）不受影响
-- 同步命令：`skillshare sync agents -p`（dry-run 用 `--dry-run`）
-- 注意：project config 的 targets 是**数组**（`- name: xxx`），不是全局 config 的 map 格式，写错会报 `cannot unmarshal !!map`
+### 本項目配置方式（2026-08-16 確定）
+- 本項目**不使用 skillshare 項目級 agent**（`.skillshare/agents/` 已移除）
+- 正確做法：repo 級 agent 指令 = 根目錄 `AGENTS.md`，由 **agent-rules 工具**管理：
+  ```bash
+  ~/.agents/skills/agent-rules/agents_rule --project "$PWD" init   # 注入 base block + CLAUDE.md symlink + 註冊 managed-repos.txt
+  ~/.agents/skills/agent-rules/agents_rule --project "$PWD" docs    # scaffold docs/
+  ```
+- 全局 agent 指令（跨機器/跨工具）走 `~/.agents/AGENTS.md`，由 `transfer_MAC/scripts/sync-ai-agent-configs.py render` 分發 symlink 到 codex/claude/gemini/opencode 的 AGENTS.md/CLAUDE.md/GEMINI.md
+- 已配置：`AGENTS.md`（base block + STS2 項目規則）、`docs/` 五件套、`~/.agents/managed-repos.txt` 已註冊
 
 ## 11. 版本对齐（本机实测）
 
