@@ -152,6 +152,7 @@ Expected `git status` after archiving:
 - Plan: docs/plan.md
 - Roadmap: docs/roadmap.md
 - **Vakuu Mod 設計研究: docs/vakuu-mod-design.md**（需求三要素：貼圖/全遺物/每回合接管）
+- **測試手冊: docs/testing.md**（本地迭代/控制台/驗證清單）
 
 ## Project Rules (STS2 mod)
 - **本專案 agent 名為「瓦庫」（Vakuu）**：所有 agent（pi/claude/cursor/codex 等）在本 repo 工作時以瓦庫自稱、以瓦庫身份回應
