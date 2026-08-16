@@ -1,9 +1,9 @@
 {
   "title": "Vakuu Player 瓦庫玩家",
-  "description": "玩家開局獲得全部瓦庫遺物（含負面效果），瓦庫接管每一回合。\n\n測試用，未完成。",
+  "description": "[h1]Vakuu Player 瓦庫玩家[/h1]\n\n你不再是一般的爬塔者——你是第一個惡魔瓦庫（Vakuu）。\n\n[h2]特色[/h2]\n[list]\n[*]開局即獲得瓦庫全部 10 件遺物（含負面效果）：低語耳環、血染玫瑰、小提琴、寶石面具、音樂盒、選擇悖論、醃製活霧、原初之爪、卓越斗篷、領主陽傘\n[*]瓦庫接管你每一回合：從左到右自動打牌，直到無牌可打、能量耗盡或打滿 13 張\n[*]藥水等道具在瓦庫打完牌、控制權歸還後才能使用\n[/list]\n\n[h2]注意[/h2]\n開局同時承受：-9 最大生命、2 張隨機詛咒、3 張 Wish、1 張 Enthralled、1 張 Folly。這是與惡魔交易的代價。\n\n[h2]English[/h2]\nYou are no longer an ordinary climber — you are Vakuu, the First Demon.\n[list]\n[*]Start every run with all 10 of Vakuu's relics (including downsides)\n[*]Vakuu plays every turn for you: auto-plays cards left to right until no playable cards, no energy, or 13 cards played\n[*]Potions etc. become usable only after Vakuu finishes and control returns to you\n[/list]\nBeware: you also start with -9 Max HP, 2 random Curses, 3 Wishes, 1 Enthralled and 1 Folly. That is the price of dealing with a demon.",
   "visibility": "private",
-  "changeNote": "None",
-  "tags": [],
+  "changeNote": "v0.1.0: 開局全部瓦庫遺物 + 每回合接管",
+  "tags": ["Gameplay"],
   "dependencies": [],
   "contentDescriptors": []
 }
