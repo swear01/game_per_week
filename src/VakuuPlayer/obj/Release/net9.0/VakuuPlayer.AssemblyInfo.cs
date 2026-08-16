@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VakuuPlayer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c6c442b457a81c833a74448dd0e1994c339a4b64")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+92e3f29248d47e11a374130af412e5d29a5994a7")]
 [assembly: System.Reflection.AssemblyProductAttribute("VakuuPlayer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VakuuPlayer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

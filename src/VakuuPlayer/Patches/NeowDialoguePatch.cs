@@ -1,43 +1,56 @@
+using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.Entities.Ancients;
 using MegaCrit.Sts2.Core.Localization;
 
 namespace VakuuPlayer.Patches;
 
 /// <summary>
-/// 開局（Neow）對話替換成瓦庫的台詞：把 NEOW.talk.* key 換成對應的 VAKUU.talk.* key
-/// （遊戲兩種對話結構相同，瓦庫對每個角色都有對應台詞）。
+/// 開局對話：涅奧（NEOW）保持顯示，但台詞換成瓦庫的契約之語。
+/// 做法：不換 key（顯示的說話者名字由 key 前綴決定，必須保持 NEOW），
+/// 而是訂閱語系切換事件，把 ancients 表裡 NEOW.talk.* 的值覆蓋為對應 VAKUU.talk.* 的文本。
+/// 文本直接從表內複製，自動跟隨遊戲語言（eng / zht）。
 /// </summary>
-[HarmonyPatch(typeof(AncientDialogue), nameof(AncientDialogue.PopulateLines))]
 public static class NeowDialoguePatch
 {
-    private static void Postfix(AncientDialogue __instance, string ancientEntry)
+    private static bool _subscribed;
+
+    public static void Initialize()
     {
-        if (ancientEntry != "NEOW")
+        if (_subscribed)
         {
             return;
         }
 
-        var replaced = 0;
-        foreach (var line in __instance.Lines)
+        _subscribed = true;
+        LocString.SubscribeToLocaleChange(ApplyOverrides);
+        ApplyOverrides(); // 若表已載入則立即生效；未載入時由回呼接手
+    }
+
+    private static void ApplyOverrides()
+    {
+        try
         {
-            var loc = line.LineText;
-            if (loc == null || loc.LocTable != "ancients" || !loc.LocEntryKey.StartsWith("NEOW.talk."))
+            var table = LocManager.Instance.GetTable("ancients");
+            var overrides = new Dictionary<string, string>();
+            foreach (var neowKey in table.Keys.Where(k => k.StartsWith("NEOW.talk.")))
             {
-                continue;
+                var vakuuKey = "VAKUU" + neowKey.Substring("NEOW".Length);
+                if (table.HasEntry(vakuuKey) && table.HasEntry(neowKey))
+                {
+                    overrides[neowKey] = table.GetRawText(vakuuKey);
+                }
             }
 
-            var vakuuKey = "VAKUU" + loc.LocEntryKey.Substring("NEOW".Length);
-            if (LocString.Exists("ancients", vakuuKey))
+            if (overrides.Count > 0)
             {
-                line.LineText = new LocString("ancients", vakuuKey);
-                replaced++;
+                table.MergeWith(overrides);
+                FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries)");
             }
         }
-
-        if (replaced > 0)
+        catch (System.Exception e)
         {
-            FileLog.Log($"VakuuPlayer: replaced {replaced} Neow dialogue line(s) with Vakuu's");
+            FileLog.Log($"VakuuPlayer: Neow override failed (table not ready?): {e.Message}");
         }
     }
 }
