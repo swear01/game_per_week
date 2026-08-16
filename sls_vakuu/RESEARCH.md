@@ -209,6 +209,18 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 - **STS2 Modding MCP**：反編譯/建置/部署/自動試玩（151 工具）
 - **TemplateMod（doctornoodlearms）**：Godot `--remote-debug tcp://127.0.0.1:6007` 接 editor console
 
+### STS1（一代）參考（方法論成熟，可借鑒）
+- ModTheSpire + BaseMod：載入器 + dev console；BaseMod 附 TestMod（每版回歸測試）
+- StS-DefaultModBase 的 Maven 生命週期：F5 clean / F6 package / F7 debug（直接啟動遊戲調試）
+- Java 8 限定
+
+### STS2 自動化/輔助工具
+- **STS2 Modding MCP**（elliotttate/sts2-modding-mcp，153 tools）：反編譯、建置、部署、**live-inspect 運行中 Godot 引擎、自動 playtest**
+- **KitLib**（STS2-KitLib）：測試 run（含 seed）、左緣 dev panel 遊戲內編輯卡牌/狀態、log viewer、pseudo co-op（雙實例 LAN）、unlock all
+- **customjack/sts2_ExampleMod**：主選單開關（main-menu toggles）掛 5 個範例 — 適合做「測試選項」模式
+- **TemplateMod（doctornoodlearms）**：Godot `--remote-debug tcp://127.0.0.1:6007` 接 editor console；mod 首次載入用獨立 save（不用怕壞進度）
+- **romgenie STS2 MCP wrapper**：VM 部署測試流程參考
+
 ## 11. 版本对齐（本机实测）
 
 - `release_info.json`: v0.111.0, commit 41cef1ea (2026-08-13)
