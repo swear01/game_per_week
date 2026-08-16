@@ -1,6 +1,7 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Modding;
-using VakuuPlayer.Patches;
+using MegaCrit.Sts2.Core.Models.RelicPools;
+using VakuuPlayer.Relics;
 
 namespace VakuuPlayer;
 
@@ -10,7 +11,7 @@ public static class ModEntry
 {
     public static void Initialize()
     {
+        ModHelper.AddModelToPool<SharedRelicPool, VakuuContract>();
         new Harmony("vakuuplayer.mod").PatchAll(typeof(ModEntry).Assembly);
-        NeowDialoguePatch.Initialize();
     }
 }
