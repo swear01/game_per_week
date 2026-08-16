@@ -151,6 +151,7 @@ Expected `git status` after archiving:
 - Notes: docs/notes.md
 - Plan: docs/plan.md
 - Roadmap: docs/roadmap.md
+- **Vakuu Mod 設計研究: docs/vakuu-mod-design.md**（需求三要素：貼圖/全遺物/每回合接管）
 
 ## Project Rules (STS2 mod)
 - 權威研究筆記: `RESEARCH.md`（遊戲版本/API 契約/工具鏈）— 寫 code 前必讀、更新時同步維護
