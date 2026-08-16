@@ -1,0 +1,9 @@
+{
+  "title": "Vakuu Player 瓦庫玩家",
+  "description": "玩家開局獲得全部瓦庫遺物（含負面效果），瓦庫接管每一回合。\n\n測試用，未完成。",
+  "visibility": "private",
+  "changeNote": "None",
+  "tags": [],
+  "dependencies": [],
+  "contentDescriptors": []
+}

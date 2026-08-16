@@ -1,0 +1,13 @@
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.csproj.AssemblyReference.cache
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.GeneratedMSBuildEditorConfig.editorconfig
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.AssemblyInfoInputs.cache
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.AssemblyInfo.cs
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.csproj.CoreCompileInputs.cache
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.sourcelink.json
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/bin/Release/net9.0/VakuuPlayer.deps.json
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/bin/Release/net9.0/VakuuPlayer.dll
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/bin/Release/net9.0/VakuuPlayer.pdb
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.dll
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/refint/VakuuPlayer.dll
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/VakuuPlayer.pdb
+/Users/swear/Documents/game_per_week/sls_vakuu/src/VakuuPlayer/obj/Release/net9.0/ref/VakuuPlayer.dll
