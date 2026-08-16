@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/runkids/skillshare/main/schemas/project-config.schema.json
+# sls_vakuu project skillshare config (agents only — skills are managed globally).
+# Agent source: .skillshare/agents/  →  synced with `skillshare sync agents -p`
+targets:
+  - name: claude
+    agents:
+      path: ~/.claude/agents
+      mode: merge
+  - name: cursor
+    agents:
+      path: ~/.cursor/agents
+      mode: merge
+  - name: opencode
+    agents:
+      path: ~/.config/opencode/agents
+      mode: merge
+ignore:
+  - .DS_Store
+  - .git/
+  - __pycache__/
+audit:
+  block_threshold: CRITICAL
