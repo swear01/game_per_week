@@ -83,10 +83,9 @@
 **貼圖（未完成）**：玩家 = Spine（`MegaCrit.Sts2.Core.Bindings.MegaSpine`），角色類在 `Models.Characters`；瓦庫無 Spine。替換方案 A/C 的具體載入點待查（角色顯示節點實例化位置）
 
 ## 測試記錄（2026-08-16）
-- v0.111.0 **只從 Steam Workshop 載入 mod**（`Looking for mods to load from Steam Workshop mod …`）— 本地 `<game>/mods` 不掃描（教程的 Windows 流程在 mac 上不適用）
-- acf 注入假/真 item 都會被 Steam 啟動還原；寄生到已訂閱目錄也不認（只載 workshop item 元數據記錄的 manifest）
-- **唯一正規路徑**：ModUploader 上傳（private）→ Steam 訂閱 → 遊戲載入；迭代 = 重跑 `ModUploader upload -w deploy/VakuuPlayer`
-- Workshop ID：`3784362897`（v0.1.0，已上傳待訂閱）
+- ✅ **正解：macOS 本地 mods 目錄 = `SlayTheSpire2.app/Contents/MacOS/mods/`**（遊戲根目錄 `mods/` 是錯的）— 已驗證：本地版號高於 Workshop 版時遊戲自動停用 Workshop 版
+- ✅ 迭代：`./test.sh`（build → 複製 → 重啟），零上傳
+- Workshop ID：`3784362897`（發佈用；開發不再需要）
 
 ## 已建立工具鏈（本 repo `tools/`）
 - `pcktool/` — 自寫 Godot pck 解包器（v3 格式，自動掃尾找目錄；用法 `list <pck> <filter>` / `extract <pck> <out> <filter>`）

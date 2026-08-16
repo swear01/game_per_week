@@ -176,6 +176,39 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 - 全局 agent 指令（跨機器/跨工具）走 `~/.agents/AGENTS.md`，由 `transfer_MAC/scripts/sync-ai-agent-configs.py render` 分發 symlink 到 codex/claude/gemini/opencode 的 AGENTS.md/CLAUDE.md/GEMINI.md
 - 已配置：`AGENTS.md`（base block + STS2 項目規則）、`docs/` 五件套、`~/.agents/managed-repos.txt` 已註冊
 
+## 10.5 正確的測試/迭代方法（2026-08-16 搜尋確認，取代之前錯誤的 Workshop 上傳流程）
+
+### 本地 mods 目錄（macOS）
+- 位置：`<遊戲>/SlayTheSpire2.app/Contents/MacOS/mods/<ModId>/`（Windows/Linux 是遊戲根目錄 `mods/`）
+- 之前把 mods 建在遊戲根目錄是錯的，導致誤以為只能從 Workshop 載入
+- 本地版號大於 Workshop 版時，遊戲自動停用 Workshop 版、載入本地版
+- **迭代流程：改碼 → `dotnet build` → 複製 dll/json 到 MacOS/mods → 重啟遊戲** — 零上傳
+- 一鍵腳本：`./test.sh`（build + 部署 + 重啟）
+
+### 開發者控制台（mods 啟用後）
+- 按 `~` / `` ` `` / `*` / `'` / `Shift+8` 開關；`help` 列出命令、`help card` 看單命令
+- 可即時生成內容測試（卡/遺物等）
+- BaseLib 加 `showlog`（開 log 視窗）、`open logs`（開 log 目錄）；BaseLib 設定可「Open log window on startup」
+
+### Log
+- `~/Library/Application Support/SlayTheSpire2/logs/godot.log`
+- mod 內用 `MainFile.Logger.Info(...)` 打自訂 log
+
+### 除錯器（IDE）
+- 遊戲目錄放 `steam_appid.txt`（內容 2868840）→ 可直接從 Rider/VS 啟動遊戲並斷點
+- mod 的 `.pdb` 複製到 dll 旁（csproj 加 Copy 目標）
+
+### 多人本地測試
+- `-fastmp host_standard`（主機）/ `-fastmp join`（客戶端）/ `-fastmp join -clientId 1001`（第三人）
+
+### 資源變更
+- 只改 .cs → 只 Build（複製 dll）；改資源/本地化/場景 → 需 Publish（Godot 打包 pck）
+
+### 工具生態
+- **KitLib**（Workshop）：測試 run、遊戲內編輯卡牌/狀態、log viewer、pseudo co-op、unlock all
+- **STS2 Modding MCP**：反編譯/建置/部署/自動試玩（151 工具）
+- **TemplateMod（doctornoodlearms）**：Godot `--remote-debug tcp://127.0.0.1:6007` 接 editor console
+
 ## 11. 版本对齐（本机实测）
 
 - `release_info.json`: v0.111.0, commit 41cef1ea (2026-08-13)

@@ -2,7 +2,7 @@
   "title": "Vakuu Player 瓦庫玩家",
   "description": "[h1]Vakuu Player 瓦庫玩家[/h1]\n你不再是一般的爬塔者——你是第一個惡魔瓦庫（Vakuu），連涅奧都換上了瓦庫的台詞。\n\n[h2]特色[/h2]\n[list]\n[*]開局即獲得瓦庫全部 10 件遺物：低語耳環、血染玫瑰、小提琴、寶石面具、音樂盒、選擇悖論、醃製活霧、原初之爪、卓越斗篷、領主陽傘\n[*]瓦庫接管你每一回合：從左到右自動打牌，直到無牌可打、能量耗盡或打滿 13 張\n[*]藥水等道具在瓦庫打完牌、控制權歸還後才能使用\n[*]開局對話由涅奧替換為瓦庫的契約之語\n[/list]\n\n[h2]簡體中文（简体中文）[/h2]\n你不再是一般的爬塔者——你是第一个恶魔瓦库（Vakuu），连涅奥都换上了瓦库的台词。\n[list]\n[*]开局即获得瓦库全部 10 件遗物：低语耳环、血染玫瑰、小提琴、宝石面具、音乐盒、选择悖论、腌制活雾、原初之爪、卓越斗篷、领主阳伞\n[*]瓦库接管你每一回合：从左到右自动打牌，直到无牌可打、能量耗尽或打满 13 张\n[*]药水等道具在瓦库打完牌、控制权归还后才能使用\n[/list]\n\n[h2]English[/h2]\nYou are no longer an ordinary climber — you are Vakuu, the First Demon, and even Neow speaks with his words.\n[list]\n[*]Start every run with all 10 of Vakuu's relics: Whispering Earring, Blood-Soaked Rose, Fiddle, Jeweled Mask, Music Box, Choices Paradox, Preserved Fog, Sere Talon, Distinguished Cape, Lord's Parasol\n[*]Vakuu plays every turn for you: auto-plays cards left to right until no playable cards, no energy, or 13 cards played\n[*]Potions and other items become usable only after Vakuu finishes and control returns to you\n[*]The opening dialogue is now Vakuu's contract, not Neow's\n[/list]",
   "visibility": "private",
-  "changeNote": "v0.1.4: 修正涅奧台詞覆蓋時機（表載入後套用）；初始化零錯誤",
+  "changeNote": "v0.1.5: 玩家名字改為「瓦庫」；涅奧台詞+角色名本地化覆蓋整合",
   "tags": [
     "Gameplay"
   ],
