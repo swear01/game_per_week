@@ -1,0 +1,15 @@
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/bin/Release/net9.0/pcktool
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/bin/Release/net9.0/pcktool.deps.json
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/bin/Release/net9.0/pcktool.runtimeconfig.json
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/bin/Release/net9.0/pcktool.dll
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/bin/Release/net9.0/pcktool.pdb
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.GeneratedMSBuildEditorConfig.editorconfig
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.AssemblyInfoInputs.cache
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.AssemblyInfo.cs
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.csproj.CoreCompileInputs.cache
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.sourcelink.json
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.dll
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/refint/pcktool.dll
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.pdb
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/pcktool.genruntimeconfig.cache
+/Users/swear/Documents/game_per_week/sls_vakuu/tools/pcktool/obj/Release/net9.0/ref/pcktool.dll
