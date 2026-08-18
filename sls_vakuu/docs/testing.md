@@ -55,10 +55,18 @@ NMainMenu.OpenSingleplayerSubmenu()                 // public
 → NGame.StartNewSingleplayerRun(...)
 ```
 
-不要直接只呼叫 `NGame.StartNewSingleplayerRun`：它需要已建立的 lobby、角色、acts、settings 和 preload 狀態；跳過這些會造成黑屏或 run 初始化例外。測試 harness 已驗證載入，但目前 hapi 沒有 macOS Accessibility 權限，且遊戲曾停在 common asset preload，因此已移除，不留在正式 mod。
+不要直接只呼叫 `NGame.StartNewSingleplayerRun`：它需要已建立的 lobby、角色、acts、settings 和 preload 狀態；跳過這些會造成黑屏或 run 初始化例外。臨時 harness 已成功走到 `Embarking on a singleplayer IRONCLAD run`，但 Preserved Fog 的手動 UI 仍未能在原版開局階段建立；harness 已移除，不留在正式 mod。
 
-### 權限限制
-瓦庫目前透過 launchd 的 hapi daemon 執行，`AXIsProcessTrusted=0`，不能模擬滑鼠/鍵盤。要讓 agent 自動按 UI，需把 `/Users/swear/.local/bin/hapi` 加到：系統設定 → 隱私權與安全性 → 輔助功能；或由已獲授權的 Terminal 執行控制腳本。
+### 權限與實機診斷
+瓦庫之前把新開的 Swift 子程序回報的 `AXIsProcessTrusted=false` 誤當成 hapi 狀態。這個 API 只檢查**呼叫它的當前 executable**，不能代表父程序 hapi。實際檢查 macOS system TCC DB 得到：
+
+```text
+kTCCServiceAccessibility
+/Users/swear/.local/bin/hapi
+auth_value=2 (允許)
+```
+
+目前真正阻止測試的是遊戲設定中的兩筆 `VakuuPlayer` 都曾是 `is_enabled=false`，不是 Accessibility。把 `mods_directory` 的本地 VakuuPlayer 設為 true 後，log 已確認 `Calling initializer` → `Finished mod initialization`。`osascript` 仍未獲輔助取用，那是子程序自己的 TCC 身份，與 hapi 授權不同。
 
 ## 失敗診斷案例：Preserved Fog
 
@@ -68,7 +76,7 @@ NMainMenu.OpenSingleplayerSubmenu()                 // public
 Cannot wait for remote choice in singleplayer!
 ```
 
-正確修正是 `LocalCardSelectPatch`：單人模式強制走 `NChooseABundleSelectionScreen` 本地手動選擇；不應把原效果改成隨機刪牌。
+原先只做 `LocalCardSelectPatch`（單人模式強制 `ShouldSelectLocalCard=true`）仍不夠：`FromDeckGeneric` 會在 `RunManager.FinalizeStartingRelics` 期間呼叫 `NOverlayStack.Instance`，但 `NOverlayStack.Instance` 依賴尚未建立的 `NRun`，因此會得到 `NullReferenceException`。完整修正必須把 Preserved Fog 的手動選擇延後到 `NRun`/overlay stack 建立後，或提供不依賴 `NRun` 的開局選擇 UI；不應把原效果改成隨機刪牌。
 
 ## Log
 
