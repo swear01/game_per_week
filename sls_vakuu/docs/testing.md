@@ -55,7 +55,7 @@ NMainMenu.OpenSingleplayerSubmenu()                 // public
 → NGame.StartNewSingleplayerRun(...)
 ```
 
-不要直接只呼叫 `NGame.StartNewSingleplayerRun`：它需要已建立的 lobby、角色、acts、settings 和 preload 狀態；跳過這些會造成黑屏或 run 初始化例外。臨時 harness 已成功走到 `Embarking on a singleplayer IRONCLAD run`，但 Preserved Fog 的手動 UI 仍未能在原版開局階段建立；harness 已移除，不留在正式 mod。
+不要直接只呼叫 `NGame.StartNewSingleplayerRun`：它需要已建立的 lobby、角色、acts、settings 和 preload 狀態；跳過這些會造成黑屏或 run 初始化例外。臨時 harness 已成功走到 `Embarking on a singleplayer IRONCLAD run`，並由正式 mod 在 `AfterActEntered` 顯示 Preserved Fog 手動 UI；harness 已移除，不留在正式 mod。
 
 ### 權限與實機診斷
 瓦庫之前把新開的 Swift 子程序回報的 `AXIsProcessTrusted=false` 誤當成 hapi 狀態。這個 API 只檢查**呼叫它的當前 executable**，不能代表父程序 hapi。實際檢查 macOS system TCC DB 得到：
@@ -76,7 +76,16 @@ auth_value=2 (允許)
 Cannot wait for remote choice in singleplayer!
 ```
 
-原先只做 `LocalCardSelectPatch`（單人模式強制 `ShouldSelectLocalCard=true`）仍不夠：`FromDeckGeneric` 會在 `RunManager.FinalizeStartingRelics` 期間呼叫 `NOverlayStack.Instance`，但 `NOverlayStack.Instance` 依賴尚未建立的 `NRun`，因此會得到 `NullReferenceException`。修正方向是：開局 `AfterObtained` 只暫存 Preserved Fog 的 owner；等 `RunManager.EnterAct` 在 `NRun.Create` 後呼叫 `Hook.AfterActEntered` 時，由 `VakuuContract.AfterActEntered()` await 原生手動選牌，再執行刪牌與加入 Folly。不應把原效果改成隨機刪牌。
+原先只做 `LocalCardSelectPatch`（單人模式強制 `ShouldSelectLocalCard=true`）仍不夠：`FromDeckGeneric` 會在 `RunManager.FinalizeStartingRelics` 期間呼叫 `NOverlayStack.Instance`，但 `NOverlayStack.Instance` 依賴尚未建立的 `NRun`，因此會得到 `NullReferenceException`。修正方向是：開局 `AfterObtained` 暫存 Preserved Fog 當下可移除牌組 snapshot；等 `RunManager.EnterAct` 在 `NRun.Create` 後完成第一個 map/room、再呼叫 `Hook.AfterActEntered` 時，由 `VakuuContract.AfterActEntered()` await 原生手動選牌。選項用 snapshot filter，避免後續 SereTalon/DistinguishedCape 加入的牌出現，完成後再執行刪牌與加入 Folly。不應把原效果改成隨機刪牌。
+
+## 實機驗證記錄
+
+- 2026-08-18：task branch 的一次性 harness 走原生單人開局至 `Embarking on a singleplayer IRONCLAD run`
+- log 確認 `Preserved Fog startup effect deferred` → `opening deferred Preserved Fog selection`
+- 截圖確認原生畫面顯示 `Choose 3 cards to Remove`
+- 第一輪測試完成選牌並移除 3 張牌；第二輪 snapshot 測試確認畫面只有起始牌、沒有 Decay/Writhe/Apparitions
+- 兩輪均無 `NullReferenceException`、無 `Cannot wait for remote choice`
+- harness 已移除；本地正式 VakuuPlayer 仍可載入
 
 ## Log
 

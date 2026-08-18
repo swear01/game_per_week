@@ -214,6 +214,29 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 - StS-DefaultModBase 的 Maven 生命週期：F5 clean / F6 package / F7 debug（直接啟動遊戲調試）
 - Java 8 限定
 
+### Preserved Fog 開局生命週期（v0.111.0 實測）
+
+`NGame.StartRun` 的關鍵順序為：
+
+```text
+PreloadRunAssets
+→ RunManager.FinalizeStartingRelics
+→ RunManager.Launch
+→ NRun.Create
+→ RunManager.EnterAct
+```
+
+`FinalizeStartingRelics` 逐一 await 起始遺物的 `AfterObtained()`；此時 `NRun.Instance` 與 `NOverlayStack.Instance` 尚不存在。因此不能在 Preserved Fog 的原生 `AfterObtained` 直接開 `NDeckCardSelectScreen`。
+
+瓦庫目前的正確接法：
+
+1. 單人瓦庫新 run 中，Harmony 精確攔截 Preserved Fog 的 `AfterObtained`，保存當時可移除牌的 snapshot，延後副作用。
+2. `RunManager.EnterAct` 在 `NRun.Create` 後會初始化第一幕、觸發 `ActEntered`、淡入，再 await `Hook.AfterActEntered(runState)`。
+3. `VakuuContract.AfterActEntered()` await 原生 `CardSelectCmd.FromDeckGeneric` 選牌 UI；以 snapshot filter 排除後續 SereTalon/DistinguishedCape 新增的牌。
+4. 玩家選滿 3 張後用原生 `CardPileCmd.RemoveFromDeck`，再加入 Folly；任何例外直接讓 run 啟動失敗，不隨機刪牌。
+
+不要用全域 `ShouldSelectLocalCard` patch：它不能建立 NRun/overlay，且會影響所有單人選牌。若 map 已在 `AfterActEntered` 時開啟，選牌協調器暫時關閉 map，完成後恢復。
+
 ### STS2 自動化/輔助工具
 - **STS2 Modding MCP**（elliotttate/sts2-modding-mcp，153 tools）：反編譯、建置、部署、**live-inspect 運行中 Godot 引擎、自動 playtest**
 - **KitLib**（STS2-KitLib）：測試 run（含 seed）、左緣 dev panel 遊戲內編輯卡牌/狀態、log viewer、pseudo co-op（雙實例 LAN）、unlock all
