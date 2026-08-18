@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Models;
+using VakuuPlayer.Relics;
 
 namespace VakuuPlayer.Patches;
 
@@ -25,7 +27,7 @@ public static class LocOverridesPatch
 
             if (__result.tables.TryGetValue("ancients", out var ancients))
             {
-                ApplyNeowOverrides(ancients);
+                ApplyNeowOverrides(ancients, language);
             }
 
             if (__result.tables.TryGetValue("relics", out var relics))
@@ -39,7 +41,7 @@ public static class LocOverridesPatch
         }
     }
 
-    private static void ApplyNeowOverrides(LocTable table)
+    private static void ApplyNeowOverrides(LocTable table, string language)
     {
         var overrides = new Dictionary<string, string>();
         foreach (var neowKey in table.Keys.Where(k => k.StartsWith("NEOW.talk.")))
@@ -54,22 +56,33 @@ public static class LocOverridesPatch
         if (overrides.Count > 0)
         {
             table.MergeWith(overrides);
-            FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries)");
+            FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries, lang={language})");
         }
     }
 
     private static void ApplyVakuuContractLoc(LocTable table, string language)
     {
-        var isZht = language == "zht";
+        var keyPrefix = ModelDb.GetId<VakuuContract>().Entry.ToUpperInvariant();
+        var (title, description, flavor) = language switch
+        {
+            "zht" => (
+                "瓦庫契約",
+                "每回合開始 +1 能量。瓦庫接管你的每一回合：從左到右自動打牌，直到無牌可打、能量耗盡或打滿 13 張。",
+                "把你自己交給我，你就能變得和我一樣萬眾畏懼。"),
+            "zhs" => (
+                "瓦库契约",
+                "每回合开始 +1 能量。瓦库接管你的每一回合：从左到右自动出牌，直到无牌可打、能量耗尽或打满 13 张。",
+                "把你自己交给我，你就能变得和我一样令人畏惧。"),
+            _ => (
+                "Vakuu's Contract",
+                "Gain 1 Energy at the start of each turn. Vakuu plays every turn for you: auto-plays cards left to right until no playable cards, no energy, or 13 cards played.",
+                "Give yourself to me and you will be feared as much as I."),
+        };
         var overrides = new Dictionary<string, string>
         {
-            ["VAKUU_CONTRACT.title"] = isZht ? "瓦庫契約" : "Vakuu's Contract",
-            ["VAKUU_CONTRACT.description"] = isZht
-                ? "每回合開始 +1 能量。瓦庫接管你的每一回合：從左到右自動打牌，直到無牌可打、能量耗盡或打滿 13 張。"
-                : "Gain 1 Energy at the start of each turn. Vakuu plays every turn for you: auto-plays cards left to right until no playable cards, no energy, or 13 cards played.",
-            ["VAKUU_CONTRACT.flavor"] = isZht
-                ? "把你自己交給我，你就能變得和我一樣萬眾畏懼。"
-                : "Give yourself to me and you will be feared as much as I.",
+            [$"{keyPrefix}.title"] = title,
+            [$"{keyPrefix}.description"] = description,
+            [$"{keyPrefix}.flavor"] = flavor,
         };
         table.MergeWith(overrides);
         FileLog.Log($"VakuuPlayer: VakuuContract localization added ({language})");

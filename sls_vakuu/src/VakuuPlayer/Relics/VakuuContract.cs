@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -52,14 +51,13 @@ public sealed class VakuuContract : RelicModel
         HoverTipFactory.ForEnergy(this)
     ];
 
-    public override Task AfterActEntered()
+    public override async Task AfterActEntered()
     {
-        return PreservedFogStartupCoordinator.ApplyPendingAsync(Owner);
+        await PreservedFogStartupCoordinator.ApplyPendingAsync(Owner);
     }
 
     public override async Task AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext choiceContext, Player player)
     {
-        GD.Print($"[VakuuPlayer] AfterAutoPrePlayPhaseEnteredLate triggered (player={player != null}, ownerSet={Owner != null})");
         var owner = Owner;
         if (owner == null || player != owner)
         {
@@ -89,8 +87,13 @@ public sealed class VakuuContract : RelicModel
                && !CombatManager.Instance.IsPlayerReadyToEndTurn(player)
                && playerCombatState.TurnNumber == startTurn)
         {
-            var card = PileTypeExtensions.GetPile(PileType.Hand, owner)
-                .Cards.FirstOrDefault(c => c.CanPlay());
+            var handPile = PileTypeExtensions.GetPile(PileType.Hand, owner);
+            if (handPile == null)
+            {
+                break;
+            }
+
+            var card = handPile.Cards.FirstOrDefault(c => c.CanPlay());
             if (card == null)
             {
                 break;

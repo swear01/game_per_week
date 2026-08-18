@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Godot;
 using MegaCrit.Sts2.Core.CardSelection;
@@ -18,6 +20,8 @@ namespace VakuuPlayer.Patches;
 
 internal static class PreservedFogStartupCoordinator
 {
+    private const int RemoveCount = 3;
+
     private sealed record PendingSelection(Player Owner, IReadOnlyList<CardModel> Cards);
 
     private static PendingSelection? _pending;
@@ -35,23 +39,35 @@ internal static class PreservedFogStartupCoordinator
             return false;
         }
 
-        var cards = PileTypeExtensions.GetPile(PileType.Deck, owner).Cards
+        var deckPile = PileTypeExtensions.GetPile(PileType.Deck, owner);
+        if (deckPile == null)
+        {
+            throw new InvalidOperationException("Player deck pile is not initialized during Preserved Fog startup.");
+        }
+
+        var cards = deckPile.Cards
             .Where(card => card.IsRemovable)
             .ToList();
-        if (cards.Count < 3)
+        if (cards.Count < RemoveCount)
         {
             throw new InvalidOperationException($"Preserved Fog found only {cards.Count} removable starting cards.");
         }
 
-        _pending = new PendingSelection(owner, cards);
+        var pending = new PendingSelection(owner, cards);
+        var previous = Interlocked.Exchange(ref _pending, pending);
+        if (previous != null)
+        {
+            GD.Print("[VakuuPlayer] replaced an abandoned Preserved Fog startup selection");
+        }
         GD.Print($"[VakuuPlayer] Preserved Fog startup effect deferred until AfterActEntered (snapshot={cards.Count})");
         return true;
     }
 
     public static async Task ApplyPendingAsync(Player owner)
     {
-        var pending = _pending;
-        if (pending == null || !ReferenceEquals(pending.Owner, owner))
+        var pending = Volatile.Read(ref _pending);
+        if (pending == null || !ReferenceEquals(pending.Owner, owner)
+            || Interlocked.CompareExchange(ref _pending, null, pending) != pending)
         {
             return;
         }
@@ -73,16 +89,22 @@ internal static class PreservedFogStartupCoordinator
             GD.Print("[VakuuPlayer] opening deferred Preserved Fog selection");
             var snapshotIndex = pending.Cards
                 .Select((card, index) => (card, index))
-                .ToDictionary(item => item.card, item => item.index);
-            var prefs = new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, 3);
-            var selected = (await CardSelectCmd.FromDeckGeneric(
+                .ToDictionary(item => item.card, item => item.index, (IEqualityComparer<CardModel>)ReferenceEqualityComparer.Instance);
+            var prefs = new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, RemoveCount);
+            var selectionResult = await CardSelectCmd.FromDeckGeneric(
                 owner,
                 prefs,
                 card => card.IsRemovable && snapshotIndex.ContainsKey(card),
-                card => snapshotIndex[card])).ToList();
-            if (selected.Count != 3)
+                card => snapshotIndex.TryGetValue(card, out var index) ? index : int.MaxValue);
+            if (selectionResult == null)
             {
-                throw new InvalidOperationException($"Preserved Fog selected {selected.Count} cards instead of 3.");
+                throw new InvalidOperationException("Preserved Fog card selection returned null.");
+            }
+
+            var selected = selectionResult.ToList();
+            if (selected.Count != RemoveCount)
+            {
+                throw new InvalidOperationException($"Preserved Fog selected {selected.Count} cards instead of {RemoveCount}.");
             }
 
             foreach (var card in selected)
@@ -92,11 +114,9 @@ internal static class PreservedFogStartupCoordinator
 
             await CardPileCmd.AddCurseToDeck<Folly>(owner);
             GD.Print($"[VakuuPlayer] Preserved Fog removed cards: {string.Join(", ", selected.Select(c => c.Id.Entry))}");
-            _pending = null;
         }
         finally
         {
-            _pending = null;
             if (reopenMap && NMapScreen.Instance != null)
             {
                 NMapScreen.Instance.Open(true);

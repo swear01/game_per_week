@@ -32,12 +32,16 @@ public static class StartingRelicsPatch
 
     private static void Apply(ref IReadOnlyList<RelicModel> __result)
     {
+        if (__result == null)
+        {
+            throw new InvalidOperationException("Character starting relics returned null.");
+        }
+
         var list = __result
             .Where(r => r.GetType() != typeof(WhisperingEarring)) // 低語耳環由瓦庫契約取代
             .ToList();
         list.AddRange(VakuuRelics);
         __result = list;
-        FileLog.Log($"VakuuPlayer: starting relics = {string.Join(", ", list.Select(r => r.GetType().Name))}");
     }
 
     [HarmonyPatch(typeof(Ironclad), nameof(CharacterModel.StartingRelics), MethodType.Getter)]
