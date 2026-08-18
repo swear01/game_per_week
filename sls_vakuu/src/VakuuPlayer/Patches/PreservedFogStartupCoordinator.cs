@@ -26,8 +26,9 @@ internal static class PreservedFogStartupCoordinator
 
     private static PendingSelection? _pending;
 
-    public static bool TryDefer(PreservedFog relic)
+    public static bool TryDefer(PreservedFog relic, out Exception? failure)
     {
+        failure = null;
         var owner = relic.Owner;
         var runManager = RunManager.Instance;
         if (owner == null
@@ -42,7 +43,8 @@ internal static class PreservedFogStartupCoordinator
         var deckPile = PileTypeExtensions.GetPile(PileType.Deck, owner);
         if (deckPile == null)
         {
-            throw new InvalidOperationException("Player deck pile is not initialized during Preserved Fog startup.");
+            failure = new InvalidOperationException("Player deck pile is not initialized during Preserved Fog startup.");
+            return true;
         }
 
         var cards = deckPile.Cards
@@ -50,14 +52,17 @@ internal static class PreservedFogStartupCoordinator
             .ToList();
         if (cards.Count < RemoveCount)
         {
-            throw new InvalidOperationException($"Preserved Fog found only {cards.Count} removable starting cards.");
+            failure = new InvalidOperationException($"Preserved Fog found only {cards.Count} removable starting cards.");
+            return true;
         }
 
         var pending = new PendingSelection(owner, cards);
         var previous = Interlocked.Exchange(ref _pending, pending);
         if (previous != null && ReferenceEquals(previous.Owner, owner))
         {
-            throw new InvalidOperationException("Preserved Fog startup selection was deferred more than once for the same run.");
+            Interlocked.CompareExchange(ref _pending, null, pending);
+            failure = new InvalidOperationException("Preserved Fog startup selection was deferred more than once for the same run.");
+            return true;
         }
         if (previous != null)
         {

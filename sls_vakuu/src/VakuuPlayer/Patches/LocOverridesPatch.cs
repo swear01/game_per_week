@@ -89,6 +89,12 @@ public static class LocOverridesPatch
             [$"{keyPrefix}.flavor"] = flavor,
         };
         table.MergeWith(overrides);
+        if (!table.HasEntry($"{keyPrefix}.title")
+            || !table.HasEntry($"{keyPrefix}.description")
+            || !table.HasEntry($"{keyPrefix}.flavor"))
+        {
+            throw new InvalidOperationException($"VakuuContract localization keys were not added for {language}.");
+        }
         FileLog.Log($"VakuuPlayer: VakuuContract localization added ({language})");
     }
 }

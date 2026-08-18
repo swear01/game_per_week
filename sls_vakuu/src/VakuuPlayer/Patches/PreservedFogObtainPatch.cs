@@ -9,12 +9,12 @@ internal static class PreservedFogObtainPatch
 {
     private static bool Prefix(PreservedFog __instance, ref Task __result)
     {
-        if (!PreservedFogStartupCoordinator.TryDefer(__instance))
+        if (!PreservedFogStartupCoordinator.TryDefer(__instance, out var failure))
         {
             return true;
         }
 
-        __result = Task.CompletedTask;
+        __result = failure == null ? Task.CompletedTask : Task.FromException(failure);
         return false;
     }
 }
