@@ -15,6 +15,7 @@
 - **STS2 開局時 NRun 尚未建立**：`NGame.StartRun` 的順序是 preload → `RunManager.FinalizeStartingRelics()` → `RunManager.Launch()` → `NRun.Create(runState)`。因此 Preserved Fog 不可從角色 `StartingRelics` 直接取得；本 mod 改在第一幕 Vakuu callback、NRun 與原生 overlay 建立後使用 `RelicCmd.Obtain`。
 - **Ancient 池來源**：第一幕的 `Overgrowth`／`Underdocks` 各自提供 Ancient 池，第三幕 `Glory` 另有自己的池，共用池目前只有 Darv。移除第三幕 Vakuu 只需過濾 `Glory.AllAncients`。
 - **Vakuu 對話分流**：原生 `Vakuu.DefineDialogues()` 按 Ironclad、Silent、Defect、Regent、Necrobinder 及造訪次數建立對話；本 mod 只替換首次造訪開場，保留其他分流。
+- **角色頁起始遺物契約**：原生 `NCharacterSelectScreen.SelectCharacter()` 直接讀取 `StartingRelics[0]` 顯示預覽；清空 getter 會讓角色頁 index exception。正式 patch 只在 `SelectCharacter` 呼叫期間提供原生預覽遺物，Finalizer 後仍回傳空清單，讓新局序列化與 `Player.PopulateStartingRelics()` 保持空遺物。
 
 ## Decisions
 - **2026-08-16 不使用 skillshare 項目級 agent（`.skillshare/agents/`）**：使用者有既有的 agent sync 體系 — repo 級指令寫 `AGENTS.md`（agents_rule 工具管理，已註冊 `~/.agents/managed-repos.txt`），全局 agent 指令走 `~/.agents/AGENTS.md`（`transfer_MAC/scripts/sync-ai-agent-configs.py render` 分發到 codex/claude/gemini/opencode）。不要再自創 agent 文件。
