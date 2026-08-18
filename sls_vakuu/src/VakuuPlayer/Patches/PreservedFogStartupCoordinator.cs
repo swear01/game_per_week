@@ -84,14 +84,30 @@ internal static class PreservedFogStartupCoordinator
             Interlocked.CompareExchange(ref _pending, null, pending);
             return;
         }
-        if (Interlocked.CompareExchange(ref _pending, null, pending) != pending)
-        {
-            return;
-        }
-
         if (NRun.Instance == null)
         {
             throw new InvalidOperationException("NRun is not available for the deferred Preserved Fog selection.");
+        }
+
+        var deckPile = PileTypeExtensions.GetPile(PileType.Deck, owner);
+        if (deckPile == null)
+        {
+            throw new InvalidOperationException("Player deck pile is not initialized for the deferred Preserved Fog selection.");
+        }
+
+        var liveCards = new HashSet<CardModel>(deckPile.Cards, ReferenceEqualityComparer.Instance);
+        var unavailable = pending.Cards
+            .Where(card => !card.IsRemovable || !liveCards.Contains(card))
+            .Select(card => card.Id.Entry)
+            .ToList();
+        if (unavailable.Count > 0)
+        {
+            throw new InvalidOperationException($"Preserved Fog snapshot cards are no longer removable: {string.Join(", ", unavailable)}");
+        }
+
+        if (Interlocked.CompareExchange(ref _pending, null, pending) != pending)
+        {
+            return;
         }
 
         var map = NMapScreen.Instance;

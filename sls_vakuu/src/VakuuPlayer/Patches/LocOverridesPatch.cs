@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
-using MegaCrit.Sts2.Core.Models;
-using VakuuPlayer.Relics;
 
 namespace VakuuPlayer.Patches;
 
@@ -16,6 +14,8 @@ namespace VakuuPlayer.Patches;
 [HarmonyPatch(typeof(LocManager), "LoadTablesFromPath")]
 public static class LocOverridesPatch
 {
+    private const string VakuuContractLocPrefix = "VAKUU_CONTRACT";
+
     private static void Postfix(string language, ref (Dictionary<string, LocTable> tables, bool allowOverride, List<LocValidationError> errors) __result)
     {
         try
@@ -62,7 +62,7 @@ public static class LocOverridesPatch
 
     private static void ApplyVakuuContractLoc(LocTable table, string language)
     {
-        var keyPrefix = ModelDb.GetId<VakuuContract>().Entry.ToUpperInvariant();
+        var keyPrefix = VakuuContractLocPrefix;
         if (language is not ("eng" or "zhs" or "zht"))
         {
             FileLog.Log($"VakuuPlayer: no VakuuContract translation for {language}; using English fallback");
@@ -89,11 +89,10 @@ public static class LocOverridesPatch
             [$"{keyPrefix}.flavor"] = flavor,
         };
         table.MergeWith(overrides);
-        if (!table.HasEntry($"{keyPrefix}.title")
-            || !table.HasEntry($"{keyPrefix}.description")
-            || !table.HasEntry($"{keyPrefix}.flavor"))
+        var missingKeys = overrides.Keys.Where(key => !table.HasEntry(key)).ToList();
+        if (missingKeys.Count > 0)
         {
-            throw new InvalidOperationException($"VakuuContract localization keys were not added for {language}.");
+            throw new InvalidOperationException($"VakuuContract localization keys were not added for {language}: {string.Join(", ", missingKeys)}");
         }
         FileLog.Log($"VakuuPlayer: VakuuContract localization added ({language})");
     }
