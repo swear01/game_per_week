@@ -20,14 +20,14 @@ internal static class VakuuEventPatch
     internal const string AcceptOptionKey = "VAKUU.pages.INITIAL.options.ACCEPT";
 
     private static readonly MethodInfo DoneMethod =
-        AccessTools.Method(typeof(AncientEventModel), "Done")
-        ?? throw new MissingMethodException(typeof(AncientEventModel).FullName, "Done");
+        AccessTools.Method(typeof(AncientEventModel), "Done", Type.EmptyTypes)
+        ?? throw new MissingMethodException(typeof(AncientEventModel).FullName, "Done()");
 
     [HarmonyPatch(typeof(Vakuu), "DefineDialogues")]
     private static class OpeningDialoguePatch
     {
         private static readonly MethodInfo FirstVisitEverSetter =
-            typeof(AncientDialogueSet).GetProperty(nameof(AncientDialogueSet.FirstVisitEverDialogue))?.SetMethod
+            AccessTools.PropertySetter(typeof(AncientDialogueSet), nameof(AncientDialogueSet.FirstVisitEverDialogue))
             ?? throw new MissingMethodException(typeof(AncientDialogueSet).FullName, "FirstVisitEverDialogue setter");
 
         private static void Postfix(ref AncientDialogueSet __result)

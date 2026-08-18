@@ -205,7 +205,7 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 
 - `Overgrowth.AllAncients` 與 `Underdocks.AllAncients` 原本只提供 Neow；`Glory.AllAncients` 提供 Nonupeipe、Tanx、Vakuu。
 - `ModelDb.AllSharedAncients` 目前只有 Darv，因此第三幕過濾 `Glory.AllAncients` 不會留下共用池繞道路徑。
-- `RunManager.SetStartedWithNeowFlag` 在新局建立時決定第一幕是否進入開局 Ancient；`RunManager.State` 是 private backing property，Harmony patch 需使用精確欄位反射取得 `RunState`。
+- `RunManager.SetStartedWithNeowFlag` 在新局建立時決定第一幕是否進入開局 Ancient；`RunManager.State` 是 private property，Harmony patch 需使用精確 property getter 反射取得 `RunState`。
 - `Vakuu.GenerateInitialOptions()` 原本從三個池各取一個遺物選項；本 mod 改為單一 `EventOption`，callback 依序呼叫 `RelicCmd.Obtain<T>(owner)`。
 - `AncientEventModel.Done()` 會更新 Ancient choice history 並完成事件；它是 protected，單一選項 callback 透過精確反射呼叫，不使用 `StartPreFinished()` 省略歷史記錄。
 - `AncientDialogueSet.GetValidDialogues()` 會在 total visits 為 0 時優先使用 `FirstVisitEverDialogue`，之後才按角色與造訪次數選擇 `CharacterDialogues`；本 mod 只替換首次開場，保留原生職業分流。

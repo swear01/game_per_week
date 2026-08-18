@@ -11,12 +11,12 @@ namespace VakuuPlayer.Patches;
 
 internal static class VakuuActPatch
 {
-    private static readonly FieldInfo RunStateField =
-        AccessTools.Field(typeof(RunManager), "<State>k__BackingField")
-        ?? throw new MissingFieldException(typeof(RunManager).FullName, "<State>k__BackingField");
+    private static readonly MethodInfo RunStateGetter =
+        AccessTools.PropertyGetter(typeof(RunManager), "State")
+        ?? throw new MissingMethodException(typeof(RunManager).FullName, "State getter");
 
-    private static IEnumerable<AncientEventModel> FirstActAncient =>
-        new[] { ModelDb.AncientEvent<Vakuu>() };
+    private static readonly IReadOnlyList<AncientEventModel> FirstActAncient =
+        [ModelDb.AncientEvent<Vakuu>()];
 
     [HarmonyPatch(typeof(Overgrowth), nameof(ActModel.AllAncients), MethodType.Getter)]
     private static class OvergrowthPatch
@@ -44,7 +44,7 @@ internal static class VakuuActPatch
     {
         private static void Postfix(RunManager __instance)
         {
-            var state = RunStateField.GetValue(__instance) as RunState
+            var state = RunStateGetter.Invoke(__instance, null) as RunState
                 ?? throw new InvalidOperationException("RunManager has no run state.");
             state.ExtraFields.StartedWithNeow = true;
         }
