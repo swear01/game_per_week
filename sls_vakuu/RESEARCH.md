@@ -208,6 +208,7 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 - `RunManager.SetStartedWithNeowFlag` 在新局建立時決定第一幕是否進入開局 Ancient；`RunManager.State` 是 private property，Harmony patch 需使用精確 property getter 反射取得 `RunState`。
 - `Vakuu.GenerateInitialOptions()` 原本從三個池各取一個遺物選項；本 mod 改為單一 `EventOption`，callback 依序呼叫 `RelicCmd.Obtain<T>(owner)`。
 - `AncientEventModel.Done()` 會更新 Ancient choice history 並完成事件；它是 protected，單一選項 callback 透過精確反射呼叫，不使用 `StartPreFinished()` 省略歷史記錄。
+- `LocTable.MergeWith()` 直接把傳入字典寫入內部 translation dictionary，因此可在 `LoadTablesFromPath` Postfix 新增自訂 Vakuu option 與 dialogue keys。
 - `AncientDialogueSet.GetValidDialogues()` 會在 total visits 為 0 時優先使用 `FirstVisitEverDialogue`，之後才按角色與造訪次數選擇 `CharacterDialogues`；本 mod 只替換首次開場，保留原生職業分流。
 - `NGame.StartRun` 在 `FinalizeStartingRelics()` 時尚未建立 `NRun`；因此角色起始遺物必須清空，Preserved Fog 改由第一幕事件 callback 在原生 UI 建立後取得。
 - `NCharacterSelectScreen.SelectCharacter()` 會直接讀取 `CharacterModel.StartingRelics[0]` 作為頁面預覽；清空 getter 必須以精確的 `SelectCharacter` scope 暫時提供原生預覽遺物，否則角色頁會發生 index exception。
