@@ -63,6 +63,10 @@ public static class LocOverridesPatch
     private static void ApplyVakuuContractLoc(LocTable table, string language)
     {
         var keyPrefix = ModelDb.GetId<VakuuContract>().Entry.ToUpperInvariant();
+        if (language is not ("eng" or "zhs" or "zht"))
+        {
+            FileLog.Log($"VakuuPlayer: no VakuuContract translation for {language}; using English fallback");
+        }
         var (title, description, flavor) = language switch
         {
             "zht" => (

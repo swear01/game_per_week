@@ -55,9 +55,13 @@ internal static class PreservedFogStartupCoordinator
 
         var pending = new PendingSelection(owner, cards);
         var previous = Interlocked.Exchange(ref _pending, pending);
+        if (previous != null && ReferenceEquals(previous.Owner, owner))
+        {
+            throw new InvalidOperationException("Preserved Fog startup selection was deferred more than once for the same run.");
+        }
         if (previous != null)
         {
-            GD.Print("[VakuuPlayer] replaced an abandoned Preserved Fog startup selection");
+            GD.Print("[VakuuPlayer] discarded an abandoned Preserved Fog startup selection");
         }
         GD.Print($"[VakuuPlayer] Preserved Fog startup effect deferred until AfterActEntered (snapshot={cards.Count})");
         return true;
@@ -66,8 +70,16 @@ internal static class PreservedFogStartupCoordinator
     public static async Task ApplyPendingAsync(Player owner)
     {
         var pending = Volatile.Read(ref _pending);
-        if (pending == null || !ReferenceEquals(pending.Owner, owner)
-            || Interlocked.CompareExchange(ref _pending, null, pending) != pending)
+        if (pending == null)
+        {
+            return;
+        }
+        if (!ReferenceEquals(pending.Owner, owner))
+        {
+            Interlocked.CompareExchange(ref _pending, null, pending);
+            return;
+        }
+        if (Interlocked.CompareExchange(ref _pending, null, pending) != pending)
         {
             return;
         }
@@ -87,9 +99,11 @@ internal static class PreservedFogStartupCoordinator
         try
         {
             GD.Print("[VakuuPlayer] opening deferred Preserved Fog selection");
-            var snapshotIndex = pending.Cards
-                .Select((card, index) => (card, index))
-                .ToDictionary(item => item.card, item => item.index, (IEqualityComparer<CardModel>)ReferenceEqualityComparer.Instance);
+            var snapshotIndex = new Dictionary<CardModel, int>(ReferenceEqualityComparer.Instance);
+            for (var index = 0; index < pending.Cards.Count; index++)
+            {
+                snapshotIndex.TryAdd(pending.Cards[index], index);
+            }
             var prefs = new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, RemoveCount);
             var selectionResult = await CardSelectCmd.FromDeckGeneric(
                 owner,
