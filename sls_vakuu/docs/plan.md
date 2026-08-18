@@ -9,7 +9,7 @@
 
 ## 本次實作
 
-1. 五個角色的原生 `StartingRelics` 改為空清單。
+1. 五個角色的新局 `StartingRelics` 改為空清單；角色頁預覽 scope 保留原生遺物顯示，避免原生 UI 讀取空清單。
 2. 第一幕 Ancient 固定為 Vakuu；第三幕 Ancient 池移除 Vakuu。
 3. 新局強制走第一幕開局 Ancient 流程。
 4. Vakuu 首次對話改為四句瓦庫契約台詞；其餘保留原生依角色與造訪次數分流。

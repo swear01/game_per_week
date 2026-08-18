@@ -15,7 +15,7 @@
 1. **初始化**：`~/Library/Application Support/SlayTheSpire2/logs/godot.log` 搜尋 `VakuuPlayer`
    - 期望：`Loading assembly DLL` → `Calling initializer` → `Finished mod initialization`
    - 無 Harmony exception、無本地化 key exception
-2. **角色頁**：五個原生角色名稱、角色頁與外觀保持原樣
+2. **角色頁**：五個原生角色名稱、角色頁與外觀保持原樣；預覽可顯示原生遺物，但按下 Embark 後實際起始遺物為空
 3. **第一幕開局**：
    - 角色原生起始遺物為空
    - 顯示 Vakuu Ancient，不顯示 Neow

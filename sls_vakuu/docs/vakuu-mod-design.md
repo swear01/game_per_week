@@ -46,7 +46,7 @@
 
 ## 技術決策
 
-- 五個角色的 `StartingRelics` getter 回傳空清單。
+- 五個角色的 `StartingRelics` getter 在新局回傳空清單；原生角色頁 `SelectCharacter` scope 仍提供各角色原生遺物供預覽，離開 scope 後立即恢復空清單。
 - `RunManager.SetStartedWithNeowFlag` 的新局流程強制進入第一幕開局 Ancient；不重寫 `NGame` async state machine。
 - `Overgrowth` 與 `Underdocks` 的 Ancient 池只回傳 Vakuu。
 - `Glory` 的 Ancient 池過濾 Vakuu。
