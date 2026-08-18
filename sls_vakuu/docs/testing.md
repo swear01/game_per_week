@@ -76,7 +76,7 @@ auth_value=2 (允許)
 Cannot wait for remote choice in singleplayer!
 ```
 
-原先只做 `LocalCardSelectPatch`（單人模式強制 `ShouldSelectLocalCard=true`）仍不夠：`FromDeckGeneric` 會在 `RunManager.FinalizeStartingRelics` 期間呼叫 `NOverlayStack.Instance`，但 `NOverlayStack.Instance` 依賴尚未建立的 `NRun`，因此會得到 `NullReferenceException`。完整修正必須把 Preserved Fog 的手動選擇延後到 `NRun`/overlay stack 建立後，或提供不依賴 `NRun` 的開局選擇 UI；不應把原效果改成隨機刪牌。
+原先只做 `LocalCardSelectPatch`（單人模式強制 `ShouldSelectLocalCard=true`）仍不夠：`FromDeckGeneric` 會在 `RunManager.FinalizeStartingRelics` 期間呼叫 `NOverlayStack.Instance`，但 `NOverlayStack.Instance` 依賴尚未建立的 `NRun`，因此會得到 `NullReferenceException`。修正方向是：開局 `AfterObtained` 只暫存 Preserved Fog 的 owner；等 `RunManager.EnterAct` 在 `NRun.Create` 後呼叫 `Hook.AfterActEntered` 時，由 `VakuuContract.AfterActEntered()` await 原生手動選牌，再執行刪牌與加入 Folly。不應把原效果改成隨機刪牌。
 
 ## Log
 
