@@ -5,7 +5,7 @@ using VakuuPlayer.Relics;
 
 namespace VakuuPlayer;
 
-/// <summary>Vakuu Player mod 入口：玩家開局拿到全部瓦庫遺物，瓦庫接管每一回合。</summary>
+/// <summary>Vakuu Player mod 入口：第一幕由瓦庫開局，取得全部遺物並接管每一回合。</summary>
 [ModInitializer(nameof(Initialize))]
 public static class ModEntry
 {

@@ -2,7 +2,7 @@
   "id": "VakuuPlayer",
   "name": "瓦庫尖塔",
   "author": "swear",
-  "description": "玩家開局獲得全部瓦庫遺物（含負面效果），瓦庫接管每一回合。",
+  "description": "第一幕由瓦庫開局；接受後取得全部 10 件瓦庫遺物（含負面效果），瓦庫接管每一回合，第三幕不再出現瓦庫。",
   "version": "0.1.6",
   "has_pck": false,
   "has_dll": true,

@@ -1,19 +1,31 @@
 # Plan
 
-## In Progress
-- 研究階段完成 ✅（RESEARCH.md 已含：技術棧、manifest 契約、Hook/Harmony、Workshop 上傳、agent sync 體系）
-- Repo agent 配置完成 ✅（agents_rule init + docs/ scaffold）
-- 已確認 hapi Accessibility 正常；本地 VakuuPlayer 已重新啟用並成功載入
-- 已定位 Preserved Fog 開局 NRE：`FinalizeStartingRelics` 發生在 `NRun.Create` 前，不能直接使用原版 overlay
+## 已完成
 
-## Preserved Fog 修正計畫
-1. **移除目前的 `LocalCardSelectPatch`**：它只改選擇判斷，會在 `NOverlayStack.Instance` 尚未存在時觸發 NRE，且會影響所有單人卡牌選擇。
-2. **加入開局協調器**：只在含 `VakuuContract` 的單人新 run 啟用；`PreservedFog.AfterObtained` 在 `FinalizeStartingRelics` 暫存 owner 並立即完成，不執行刪牌副作用。
-3. **利用原生 `AfterActEntered` hook**：`RunManager.EnterAct` 的實際順序是 `NRun.Create` → `SetActInternal` → `Hook.AfterActEntered` → 第一張 map/room。讓 `VakuuContract.AfterActEntered()` await 協調器，避免 patch `NGame` 或 async state machine。
-4. **在 hook 內執行暫存效果**：此時 `NOverlayStack.Instance`、`PlayerChoiceSynchronizer` 都已存在，呼叫原生 `CardSelectCmd.FromDeckForRemoval` 顯示手動選牌；等待玩家選滿 3 張後移除牌，再加入 Folly。若測試仍顯示 `LocalContext` 未就緒，只保留針對 pending owner 且確認 `NRun.Instance != null` 的窄 patch。
-5. **保留失敗可見性**：新增階段 log；任何 UI/Task 例外直接讓 run 啟動失敗，不隨機刪牌、不靜默 fallback。
-6. **實機驗證**：新 run → 手動刪 3 張 → 10 件遺物 → 第一場戰鬥每回合自動出牌；再測存檔載入、五角色與無 Preserved Fog 的回歸路徑。
+- 反編譯 v0.111.0 的 `Vakuu`、`AncientDialogueSet`、`EventOption`、`AncientEventModel`、`RelicCmd`、`RunManager`、各幕 Ancient 池。
+- 確認第一幕 `Overgrowth`／`Underdocks` 原本只有 Neow；第三幕 `Glory` 原本包含 Vakuu；共用池只有 Darv。
+- 確認 `RunManager.SetStartedWithNeowFlag` 是新局建立開局 Ancient 的切入點。
+- 確認 `NRun` 與原生 overlay 建立後，Vakuu 事件 callback 才能安全取得 Preserved Fog。
 
-## Verification Gate
-- 先用一次性 harness 驗證 `AfterActEntered` 內原生 `NDeckCardSelectScreen` 可以顯示並完成選擇，再寫入正式 mod。
-- 正式 mod 不保留 harness、不使用 `CardSelectCmd.UseSelector` 自動選牌。
+## 本次實作
+
+1. 五個角色的原生 `StartingRelics` 改為空清單。
+2. 第一幕 Ancient 固定為 Vakuu；第三幕 Ancient 池移除 Vakuu。
+3. 新局強制走第一幕開局 Ancient 流程。
+4. Vakuu 首次對話改為四句瓦庫契約台詞；其餘保留原生依角色與造訪次數分流。
+5. Vakuu 初始選項改為唯一的「接受」。
+6. 按下後使用 `RelicCmd.Obtain(...)` 依序取得全部 10 件遺物，`VakuuContract` 取代 `WhisperingEarring`。
+7. 移除 Neow 對話覆蓋；保留原生 Vakuu 立繪、背景、事件 UI。
+8. 不再使用 Preserved Fog 開局 startup defer；事件 callback 在 `NRun`／UI 建立後直接使用原生手動選牌。
+
+## 驗證順序
+
+- 先只執行 `dotnet build -c Release`，不部署、不重啟正在執行的遊戲。
+- 使用者結束遊戲後，才部署本地 DLL 並啟動新局。
+- 驗證：空遺物 → Vakuu 四句對話 → 單一接受 → 10 件遺物 → Preserved Fog 手動刪 3 張 → 第一場戰鬥每回合自動出牌。
+- 回歸：五個角色、第三幕無 Vakuu、存檔載入、無 Preserved Fog 的新局。
+
+## 風險
+
+- 舊存檔中已生成的第三幕 Vakuu 房間不會被重新生成；第三幕過濾保證新局房間池不再提供 Vakuu。
+- 目前不在使用者遊玩期間部署或重啟遊戲；實機驗證需等使用者通知。
