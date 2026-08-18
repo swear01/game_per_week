@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Models.Relics;
 
@@ -14,6 +15,10 @@ internal static class PreservedFogObtainPatch
             return true;
         }
 
+        if (failure != null)
+        {
+            GD.Print($"[VakuuPlayer] Preserved Fog startup deferral failed: {failure.Message}");
+        }
         __result = failure == null ? Task.CompletedTask : Task.FromException(failure);
         return false;
     }
