@@ -18,6 +18,7 @@
 - **STS2 語言與 LocTable 契約**：v0.111.0 的遊戲語言碼是三字母 `eng`/`zhs`/`zht` 等；`LocTable.MergeWith` 會直接寫入底層 dictionary，因此可插入原本不存在的 `VAKUU_CONTRACT.*` keys。未知語言目前明確記錄 English fallback。
 - **Choices Paradox 的戰鬥選牌不是 NDeckCardSelectScreen**：`AfterPlayerTurnStart` 透過 `CardSelectCmd.FromSimpleGrid` 建立 `NSimpleCardSelectScreen`；測試 harness 必須反射正確的 screen type，否則會卡在自動出牌前。
 - **每回合接管已實機驗證**：正常模組環境下記錄到 auto phase turn 1、2，且自動出牌 turn 1、2；第一回合後 `PlayerCmd.EndTurn` 成功送出，控制權回歸條件成立。
+- **測試關閉遊戲不可用 `pkill`／`SIGKILL`**：2026-08-20 發現每次 Jupyter／`test.sh` 重啟使用程序終止後，macOS 會顯示「Slay the Spire 2 未預期關閉」。正式關閉流程改用 AppKit `NSRunningApplication.terminate()` 對遊戲 PID 發出正常退出請求，等待 30 秒，最多重試同一請求一次；逾時只報錯、不強制殺程序。
 
 ## Decisions
 - **2026-08-16 不使用 skillshare 項目級 agent（`.skillshare/agents/`）**：使用者有既有的 agent sync 體系 — repo 級指令寫 `AGENTS.md`（agents_rule 工具管理，已註冊 `~/.agents/managed-repos.txt`），全局 agent 指令走 `~/.agents/AGENTS.md`（`transfer_MAC/scripts/sync-ai-agent-configs.py render` 分發到 codex/claude/gemini/opencode）。不要再自創 agent 文件。

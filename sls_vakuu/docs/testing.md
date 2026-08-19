@@ -13,6 +13,10 @@
 - 只改 .cs → 只 build；改資源/本地化/場景 → 需 Godot Publish（打包 pck）
 - 關遊戲再替換 dll/pck；mod 首次載入用獨立 save（不影響主進度）
 
+## 測試程式安全關閉遊戲
+
+`test.sh` 與 Jupyter runner 都透過 `tests/jupyter/quit_game.py` 關閉遊戲。它編譯 macOS AppKit helper，對指定 PID 呼叫 `NSRunningApplication.terminate()`，等待正常退出並在暫時失敗時重試一次；不使用 `pkill`、`SIGKILL` 或其他強制終止。兩次 30 秒等待後仍未退出就停止測試並報錯，避免再觸發 macOS 的「Slay the Spire 2 未預期關閉」視窗。
+
 ## Jupyter 實機整合測試
 
 從 repository root 開啟：
