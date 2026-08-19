@@ -13,6 +13,16 @@
 - 只改 .cs → 只 build；改資源/本地化/場景 → 需 Godot Publish（打包 pck）
 - 關遊戲再替換 dll/pck；mod 首次載入用獨立 save（不影響主進度）
 
+## Jupyter 實機整合測試
+
+從 repository root 開啟：
+
+```bash
+jupyter notebook tests/jupyter/vakuu_gameplay_test.ipynb
+```
+
+Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫遺物、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。它只啟用測試所需的本機 `VakuuPlayer`／`VakuuHarness`，不會停用其他 Workshop 或本機模組；測試結束會移除 harness 並還原存檔設定。測試 log 留在 `tests/jupyter/artifacts/`，截圖留在 `assets/screenshots/`。
+
 ## 驗證清單（每次迭代）
 
 1. **初始化**：`~/Library/Application Support/SlayTheSpire2/logs/godot.log` 搜 `VakuuPlayer`
