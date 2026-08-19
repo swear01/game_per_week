@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import signal
 import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from quit_game import game_pids, request_graceful_quit
 from validate_vakuu_run import validate_log
 
 
@@ -37,16 +37,6 @@ def run(command: list[str]) -> None:
     env = os.environ.copy()
     env["PATH"] = f"{Path.home() / '.dotnet'}:{env.get('PATH', '')}"
     subprocess.run(command, cwd=ROOT, check=True, env=env)
-
-
-def game_pids() -> list[int]:
-    output = subprocess.check_output(["ps", "-axo", "pid=,command="], text=True)
-    pids = []
-    for line in output.splitlines():
-        pid_text, _, command = line.strip().partition(" ")
-        if pid_text.isdigit() and "/Slay the Spire 2" in command:
-            pids.append(int(pid_text))
-    return pids
 
 
 def settings_path() -> Path:
@@ -159,17 +149,7 @@ def finish(session: TestSession) -> dict[str, object]:
 
 
 def cleanup(session: TestSession) -> None:
-    for pid in session.pids:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            continue
-    deadline = time.monotonic() + 20
-    while time.monotonic() < deadline and any(pid in game_pids() for pid in session.pids):
-        time.sleep(1)
-    remaining = [pid for pid in session.pids if pid in game_pids()]
-    for pid in remaining:
-        os.kill(pid, signal.SIGKILL)
+    request_graceful_quit(session.pids)
 
     harness_mod = MOD_ROOT / "VakuuHarness"
     if harness_mod.exists():
