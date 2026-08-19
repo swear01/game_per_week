@@ -16,6 +16,8 @@
 - **較小的正確延後點**：`RunManager.EnterAct` 在 `NRun.Create` 後完成第一個 map/room 初始化、觸發 `ActEntered`、淡入，再 await `Hook.AfterActEntered(runState)`；該 hook 逐一 await relic 的 `AfterActEntered()`。因此可讓 `VakuuContract.AfterActEntered()` 執行暫存的 Preserved Fog 選牌，避免重寫 `NGame` 開局流程或 patch async state machine。
 - **Preserved Fog 必須保存牌組 snapshot**：目前起始遺物順序中 Preserved Fog 後面還有 SereTalon、DistinguishedCape，它們會新增詛咒/Apparitions。延後選牌若直接使用當時牌組，會讓後加入的牌變成可選；協調器必須在 `AfterObtained` 保存可移除卡片，之後用 `CardSelectCmd.FromDeckGeneric` 的 filter 限制候選。實機 log 已確認即使 VakuuContract 在起始清單最後，Preserved Fog 執行時 owner.Relics 已包含它。
 - **STS2 語言與 LocTable 契約**：v0.111.0 的遊戲語言碼是三字母 `eng`/`zhs`/`zht` 等；`LocTable.MergeWith` 會直接寫入底層 dictionary，因此可插入原本不存在的 `VAKUU_CONTRACT.*` keys。未知語言目前明確記錄 English fallback。
+- **Choices Paradox 的戰鬥選牌不是 NDeckCardSelectScreen**：`AfterPlayerTurnStart` 透過 `CardSelectCmd.FromSimpleGrid` 建立 `NSimpleCardSelectScreen`；測試 harness 必須反射正確的 screen type，否則會卡在自動出牌前。
+- **每回合接管已實機驗證**：正常模組環境下記錄到 auto phase turn 1、2，且自動出牌 turn 1、2；第一回合後 `PlayerCmd.EndTurn` 成功送出，控制權回歸條件成立。
 
 ## Decisions
 - **2026-08-16 不使用 skillshare 項目級 agent（`.skillshare/agents/`）**：使用者有既有的 agent sync 體系 — repo 級指令寫 `AGENTS.md`（agents_rule 工具管理，已註冊 `~/.agents/managed-repos.txt`），全局 agent 指令走 `~/.agents/AGENTS.md`（`transfer_MAC/scripts/sync-ai-agent-configs.py render` 分發到 codex/claude/gemini/opencode）。不要再自創 agent 文件。
