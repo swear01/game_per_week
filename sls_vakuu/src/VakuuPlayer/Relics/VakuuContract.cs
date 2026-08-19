@@ -16,6 +16,7 @@ using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Nodes.Vfx;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.ValueProps;
+using VakuuPlayer.Patches;
 
 namespace VakuuPlayer.Relics;
 
@@ -29,6 +30,11 @@ public sealed class VakuuContract : RelicModel
     public const int MaxCardsToPlay = 13;
 
     public override RelicRarity Rarity => RelicRarity.Ancient;
+
+    // 圖示借用低語耳環的資源（瓦庫契約是其替代品）
+    public override string PackedIconPath => "res://images/relics/whispering_earring.png";
+    protected override string PackedIconOutlinePath => "res://images/relics/whispering_earring.png";
+    protected override string BigIconPath => "res://images/relics/whispering_earring.png";
 
     public override decimal ModifyMaxEnergy(Player player, decimal amount)
     {
@@ -45,27 +51,49 @@ public sealed class VakuuContract : RelicModel
         HoverTipFactory.ForEnergy(this)
     ];
 
+    public override async Task AfterActEntered()
+    {
+        await PreservedFogStartupCoordinator.ApplyPendingAsync(Owner);
+    }
+
     public override async Task AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext choiceContext, Player player)
     {
-        if (player != Owner)
+        var owner = Owner;
+        if (owner == null || player != owner)
         {
             return;
         }
 
         var combatState = player.Creature.CombatState;
+        if (combatState == null)
+        {
+            return;
+        }
+
         Flash();
 
         using var _ = CardSelectCmd.PushSelector(new VakuuCardSelector(), false);
 
+        var playerCombatState = owner.PlayerCombatState;
+        if (playerCombatState == null)
+        {
+            return;
+        }
+
         var cardsPlayed = 0;
-        var startTurn = Owner.PlayerCombatState.TurnNumber;
+        var startTurn = playerCombatState.TurnNumber;
         while (cardsPlayed < MaxCardsToPlay
                && !CombatManager.Instance.IsOverOrEnding
                && !CombatManager.Instance.IsPlayerReadyToEndTurn(player)
-               && Owner.PlayerCombatState.TurnNumber == startTurn)
+               && playerCombatState.TurnNumber == startTurn)
         {
-            var card = PileTypeExtensions.GetPile(PileType.Hand, Owner)
-                .Cards.FirstOrDefault(c => c.CanPlay());
+            var handPile = PileTypeExtensions.GetPile(PileType.Hand, owner);
+            if (handPile == null)
+            {
+                break;
+            }
+
+            var card = handPile.Cards.FirstOrDefault(c => c.CanPlay());
             if (card == null)
             {
                 break;
@@ -85,7 +113,7 @@ public sealed class VakuuContract : RelicModel
         var line = cardsPlayed >= MaxCardsToPlay
             ? "WHISPERING_EARRING.warning"
             : "WHISPERING_EARRING.approval";
-        TalkCmd.Play(new LocString("relics", line), Owner.Creature, VfxColor.Purple, VfxDuration.Custom);
+        TalkCmd.Play(new LocString("relics", line), owner.Creature, VfxColor.Purple, VfxDuration.Custom);
     }
 
     /// <summary>選目標：敵人 = 最左邊；友方 = 隨機；自己 = 玩家。</summary>
