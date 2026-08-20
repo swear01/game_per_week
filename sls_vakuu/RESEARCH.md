@@ -133,6 +133,12 @@ BaseLib 提供更多配置/内容 API 和 mod 间冲突协调框架。
 
 初传后大部分字段可置 `null` 表示保持不变。出错时把 `mod-uploader.log` 发给开发组。
 
+### Workshop 描述多语言（2026-08-20 实测）
+
+Steam Workshop 的 UGC 元数据支持按语言保存标题与描述。官方 `ISteamUGC` 流程要求先调用 `SetItemUpdateLanguage`，再调用 `SetItemTitle` / `SetItemDescription`；语言代码使用 Steam API 代码：`english`、`schinese`（简体中文）、`tchinese`（繁體中文）。查询时可用 `SetLanguage` 取得指定语言，未提供对应翻译时以 English 为 fallback。
+
+本机官方 ModUploader v0.2.0 的 `ModConfig` 目前只有单一 `title` / `description` 字段，`UploadCommand` 也没有调用 `SetItemUpdateLanguage`，所以不能靠现有 `workshop.json` 直接上传多语言字段。不要把多种语言拼在同一个描述中作为正式方案；应在 Workshop 网页的语言下拉选项分别维护，或使用调用上述 API 的扩展上传器。仓库 `deploy/VakuuPlayer/workshop.json` 保留 English fallback 与 `localizations` 翻译源资料。
+
 ## 10. Agent Sync（skillshare 我的工具）
 
 **skillshare**（v0.20.25，本机 `/opt/homebrew/bin/skillshare`）支持把 **agent（单个 .md 文件）** 从单一源头同步到各 AI CLI。
@@ -213,6 +219,30 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 - ModTheSpire + BaseMod：載入器 + dev console；BaseMod 附 TestMod（每版回歸測試）
 - StS-DefaultModBase 的 Maven 生命週期：F5 clean / F6 package / F7 debug（直接啟動遊戲調試）
 - Java 8 限定
+
+### Preserved Fog 開局生命週期（v0.111.0 實測）
+
+`NGame.StartRun` 的關鍵順序為：
+
+```text
+PreloadRunAssets
+→ RunManager.FinalizeStartingRelics
+→ RunManager.Launch
+→ NRun.Create
+→ RunManager.EnterAct
+```
+
+`FinalizeStartingRelics` 逐一 await 起始遺物的 `AfterObtained()`；此時 `NRun.Instance` 與 `NOverlayStack.Instance` 尚不存在。因此不能在 Preserved Fog 的原生 `AfterObtained` 直接開 `NDeckCardSelectScreen`。
+
+瓦庫目前的正確接法：
+
+1. 單人瓦庫新 run 中，Harmony 精確攔截 Preserved Fog 的 `AfterObtained`，保存當時可移除牌的 snapshot，延後副作用。
+2. `RunManager.EnterAct` 在 `NRun.Create` 後會初始化第一幕、觸發 `ActEntered`、淡入，再 await `Hook.AfterActEntered(runState)`。
+3. `VakuuContract.AfterActEntered()` await 原生 `CardSelectCmd.FromDeckGeneric` 選牌 UI；以 snapshot filter 排除後續 SereTalon/DistinguishedCape 新增的牌。
+4. 玩家選滿 3 張後用原生 `CardPileCmd.RemoveFromDeck`，再加入 Folly；任何例外直接讓 run 啟動失敗，不隨機刪牌。
+5. `ApplyPendingAsync` 保存原始 `NRun` reference，在每個 await 後以 reference identity 驗證；若選牌取消則以明確例外失敗，不能讓玩家跳過 Preserved Fog 的代價。
+
+不要用全域 `ShouldSelectLocalCard` patch：它不能建立 NRun/overlay，且會影響所有單人選牌。若 map 已在 `AfterActEntered` 時開啟，選牌協調器暫時關閉 map，完成後恢復。
 
 ### STS2 自動化/輔助工具
 - **STS2 Modding MCP**（elliotttate/sts2-modding-mcp，153 tools）：反編譯、建置、部署、**live-inspect 運行中 Godot 引擎、自動 playtest**

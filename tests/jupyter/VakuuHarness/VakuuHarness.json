@@ -1,0 +1,12 @@
+{
+  "id": "VakuuHarness",
+  "name": "Vakuu Harness",
+  "author": "Vakuu",
+  "description": "Temporary test harness",
+  "version": "0.0.1",
+  "has_pck": false,
+  "has_dll": true,
+  "min_game_version": "0.111.0",
+  "dependencies": [],
+  "affects_gameplay": true
+}

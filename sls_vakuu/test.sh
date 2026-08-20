@@ -11,13 +11,14 @@ MODS="$GAME/SlayTheSpire2.app/Contents/MacOS/mods/VakuuPlayer"
 echo "== build =="
 dotnet build -c Release src/VakuuPlayer/VakuuPlayer.csproj
 
+echo "== stop existing game gracefully =="
+python3 ../tests/jupyter/quit_game.py
+
 echo "== deploy =="
 mkdir -p "$MODS"
 cp src/VakuuPlayer/bin/Release/net9.0/VakuuPlayer.dll "$MODS/"
 cp deploy/VakuuPlayer/content/VakuuPlayer.json "$MODS/"
 
 echo "== restart game =="
-pkill -f "MacOS/Slay the Spire 2" 2>/dev/null || true
-sleep 3
 open "steam://rungameid/2868840"
 echo "deployed to $MODS"
