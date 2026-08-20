@@ -109,7 +109,7 @@ public static class LocOverridesPatch
                 .Where(entry => !table.HasEntry(entry.Key))
                 .ToDictionary(entry => entry.Key, entry => entry.Value);
         table.MergeWith(entriesToMerge);
-        var missingKeys = overrides.Keys.Where(key => !table.HasEntry(key)).ToList();
+        var missingKeys = overrides.Keys.Where(key => !table.IsLocalKey(key)).ToList();
         if (missingKeys.Count > 0)
         {
             throw new InvalidOperationException($"VakuuContract localization keys were not added for {language}: {string.Join(", ", missingKeys)}");
