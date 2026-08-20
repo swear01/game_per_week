@@ -11,6 +11,7 @@ class VakuuRunValidationTests(unittest.TestCase):
     def write_log(self, final: str) -> Path:
         lines = [
             "[VakuuHarness] attached",
+            "[VakuuPlayer] VakuuContract localization ready language=eng",
             "[VakuuHarness] confirming first 3 snapshot cards",
             "[VakuuHarness] starting Vakuu relics=10",
             "BLOOD_SOAKED_ROSE FIDDLE PRESERVED_FOG SERE_TALON DISTINGUISHED_CAPE CHOICES_PARADOX MUSIC_BOX LORDS_PARASOL JEWELED_MASK VAKUU_CONTRACT",
@@ -26,18 +27,18 @@ class VakuuRunValidationTests(unittest.TestCase):
         handle = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False)
         handle.write("\n".join(lines))
         handle.close()
-        return Path(handle.name)
+        path = Path(handle.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        return path
 
     def test_accepts_valid_final_assertions(self):
         path = self.write_log("firstCombatAutoPlayCount=2 distinctAutoPlayTurns=1,2 thirdActVakuuPresent=True")
         self.assertEqual(validate_log(path)["auto_play_count"], 2)
-        path.unlink()
 
     def test_rejects_vakuu_missing_from_act_three_ancients(self):
         path = self.write_log("firstCombatAutoPlayCount=2 distinctAutoPlayTurns=1,2 thirdActVakuuPresent=False")
         with self.assertRaises(AssertionError):
             validate_log(path)
-        path.unlink()
 
 
 if __name__ == "__main__":

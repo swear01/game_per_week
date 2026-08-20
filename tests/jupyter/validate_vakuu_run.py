@@ -7,6 +7,7 @@ from pathlib import Path
 
 REQUIRED_MARKERS = (
     "[VakuuHarness] attached",
+    "[VakuuPlayer] VakuuContract localization ready language=",
     "[VakuuHarness] confirming first 3 snapshot cards",
     "[VakuuHarness] starting Vakuu relics=10",
     "[VakuuHarness] first combat room entered",

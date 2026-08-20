@@ -6,13 +6,15 @@ import time
 from pathlib import Path
 
 
-GAME_PROCESS_MARKER = "/Slay the Spire 2"
+GAME_PROCESS_MARKER = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/"
 QUIT_SOURCE = Path(__file__).with_name("quit_game.swift")
 QUIT_BINARY = Path(__file__).with_name("artifacts") / "vakuu-quit-game"
 
 
 def game_pids() -> list[int]:
-    output = subprocess.check_output(["ps", "-axo", "pid=,command="], text=True)
+    output = subprocess.check_output(
+        ["ps", "-axo", "pid=,command="], text=True, timeout=10
+    )
     pids = []
     for line in output.splitlines():
         pid_text, _, command = line.strip().partition(" ")
@@ -24,7 +26,11 @@ def game_pids() -> list[int]:
 def compile_quit_helper() -> Path:
     QUIT_BINARY.parent.mkdir(parents=True, exist_ok=True)
     if not QUIT_BINARY.exists() or QUIT_BINARY.stat().st_mtime < QUIT_SOURCE.stat().st_mtime:
-        subprocess.run(["swiftc", str(QUIT_SOURCE), "-o", str(QUIT_BINARY)], check=True)
+        subprocess.run(
+            ["swiftc", str(QUIT_SOURCE), "-o", str(QUIT_BINARY)],
+            check=True,
+            timeout=120,
+        )
     return QUIT_BINARY
 
 
@@ -47,8 +53,10 @@ def request_graceful_quit(pids: list[int]) -> None:
     last_error: Exception | None = None
     for _ in range(2):
         try:
-            subprocess.run([helper, *(str(pid) for pid in active)], check=True)
-        except subprocess.CalledProcessError as error:
+            subprocess.run(
+                [helper, *(str(pid) for pid in active)], check=True, timeout=30
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
             last_error = error
             time.sleep(1)
             active = [pid for pid in active if pid in game_pids()]

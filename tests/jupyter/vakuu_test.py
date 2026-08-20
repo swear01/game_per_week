@@ -99,6 +99,13 @@ def deploy_and_enable(session: TestSession) -> None:
             seen.add(key)
     for mod_id, source in sorted(wanted - seen):
         mod_list.append({"id": mod_id, "is_enabled": True, "source": source})
+
+    indexes = {entry.get("id"): index for index, entry in enumerate(mod_list)}
+    vakuu_index = indexes.get("VakuuPlayer")
+    harness_index = indexes.get("VakuuHarness")
+    if vakuu_index is not None and harness_index is not None and vakuu_index > harness_index:
+        mod_list[vakuu_index], mod_list[harness_index] = mod_list[harness_index], mod_list[vakuu_index]
+
     session.settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 

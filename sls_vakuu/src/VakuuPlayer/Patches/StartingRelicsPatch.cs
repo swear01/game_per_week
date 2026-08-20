@@ -34,7 +34,8 @@ public static class StartingRelicsPatch
     {
         if (__result == null)
         {
-            throw new InvalidOperationException("Character starting relics returned null.");
+            FileLog.Log("VakuuPlayer: Character starting relics returned null; skipping patch.");
+            return;
         }
 
         var list = __result

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
 
@@ -32,6 +33,7 @@ public static class LocOverridesPatch
             catch (System.Exception e)
             {
                 FileLog.Log($"VakuuPlayer: VakuuContract loc override failed: {e}");
+                GD.PrintErr($"[VakuuPlayer] VakuuContract loc override failed: {e}");
             }
         }
 
@@ -44,6 +46,7 @@ public static class LocOverridesPatch
             catch (System.Exception e)
             {
                 FileLog.Log($"VakuuPlayer: Neow loc override failed: {e}");
+                GD.PrintErr($"[VakuuPlayer] Neow loc override failed: {e}");
             }
         }
     }
@@ -95,12 +98,18 @@ public static class LocOverridesPatch
             [$"{keyPrefix}.description"] = description,
             [$"{keyPrefix}.flavor"] = flavor,
         };
-        table.MergeWith(overrides);
+        var entriesToMerge = language is "eng" or "zhs" or "zht"
+            ? overrides
+            : overrides
+                .Where(entry => !table.HasEntry(entry.Key))
+                .ToDictionary(entry => entry.Key, entry => entry.Value);
+        table.MergeWith(entriesToMerge);
         var missingKeys = overrides.Keys.Where(key => !table.HasEntry(key)).ToList();
         if (missingKeys.Count > 0)
         {
             throw new InvalidOperationException($"VakuuContract localization keys were not added for {language}: {string.Join(", ", missingKeys)}");
         }
+        GD.Print($"[VakuuPlayer] VakuuContract localization ready language={language} keys={string.Join(",", overrides.Keys)}");
         FileLog.Log($"VakuuPlayer: VakuuContract localization added ({language})");
     }
 }

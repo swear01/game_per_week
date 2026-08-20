@@ -19,6 +19,7 @@
 - **Choices Paradox 的戰鬥選牌不是 NDeckCardSelectScreen**：`AfterPlayerTurnStart` 透過 `CardSelectCmd.FromSimpleGrid` 建立 `NSimpleCardSelectScreen`；測試 harness 必須反射正確的 screen type，否則會卡在自動出牌前。
 - **每回合接管已實機驗證**：正常模組環境下記錄到 auto phase turn 1、2，且自動出牌 turn 1、2；第一回合後 `PlayerCmd.EndTurn` 成功送出，控制權回歸條件成立。
 - **測試關閉遊戲不可用 `pkill`／`SIGKILL`**：2026-08-20 發現每次 Jupyter／`test.sh` 重啟使用程序終止後，macOS 會顯示「Slay the Spire 2 未預期關閉」。正式關閉流程改用 AppKit `NSRunningApplication.terminate()` 對遊戲 PID 發出正常退出請求，等待 30 秒，最多重試同一請求一次；逾時只報錯、不強制殺程序。
+- **macOS 遊戲程序路徑要匹配實際 bundle**：`ps` 顯示的可執行檔路徑是 `/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/`；PID、退出 helper 與視窗 helper 都必須使用完整路徑，不能誤寫成 `/Slay the Spire 2.app/`。
 - **Steam Workshop 描述支援分語言 metadata**：2026-08-20 查閱官方 `ISteamUGC` 文件並用 Workshop 3784362897 實測；`SetItemUpdateLanguage` 先於 `SetItemTitle`／`SetItemDescription`，可分別寫入 `english`、`schinese`、`tchinese`。官方 ModUploader 的 `workshop.json` 目前只有單一描述欄位，不能直接表達翻譯；正式描述不可把三種語言拼在一起，應使用 Workshop 語言欄位或支援該 API 的上傳器。
 
 ## Decisions

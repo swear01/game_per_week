@@ -20,6 +20,7 @@ namespace VakuuPlayer.Patches;
 
 internal static class PreservedFogStartupCoordinator
 {
+    // Matches PreservedFog.AfterObtained in STS2 v0.111.0: remove three cards and add Folly.
     private const int RemoveCount = 3;
 
     private sealed record PendingSelection(Player Owner, IReadOnlyList<CardModel> Cards);
@@ -27,6 +28,10 @@ internal static class PreservedFogStartupCoordinator
     private static readonly object PendingGate = new();
     private static PendingSelection? _pending;
 
+    /// <remarks>
+    /// A return value of true means the patch handled the vanilla callback. Callers must surface
+    /// a non-null failure because the deferred effect could not be scheduled safely.
+    /// </remarks>
     public static bool TryDefer(PreservedFog relic, out Exception? failure)
     {
         failure = null;
@@ -34,6 +39,7 @@ internal static class PreservedFogStartupCoordinator
         var runManager = RunManager.Instance;
         if (owner == null
             || runManager == null
+            || runManager.NetService == null
             || runManager.NetService.Type != NetGameType.Singleplayer
             || NRun.Instance != null
             || !owner.Relics.Any(r => r is VakuuContract))
@@ -80,7 +86,7 @@ internal static class PreservedFogStartupCoordinator
         {
             GD.Print("[VakuuPlayer] discarded an abandoned Preserved Fog startup selection");
         }
-        GD.Print($"[VakuuPlayer] Preserved Fog startup effect deferred until AfterActEntered (snapshot={cards.Count})");
+        GD.Print($"[VakuuPlayer] Preserved Fog startup effect deferred until AfterActEntered (removable={cards.Count}/deck={deckPile.Cards.Count})");
         return true;
     }
 
@@ -149,15 +155,6 @@ internal static class PreservedFogStartupCoordinator
             throw new InvalidOperationException($"Preserved Fog snapshot cards are no longer removable: {string.Join(", ", unavailable)}");
         }
 
-        lock (PendingGate)
-        {
-            if (!ReferenceEquals(_pending, pending))
-            {
-                return;
-            }
-            _pending = null;
-        }
-
         var map = NMapScreen.Instance;
         var reopenMap = map?.IsOpen == true;
 
@@ -166,6 +163,15 @@ internal static class PreservedFogStartupCoordinator
             if (reopenMap)
             {
                 map!.Close(false);
+            }
+
+            lock (PendingGate)
+            {
+                if (!ReferenceEquals(_pending, pending))
+                {
+                    return;
+                }
+                _pending = null;
             }
 
             GD.Print("[VakuuPlayer] opening deferred Preserved Fog selection");
@@ -187,7 +193,8 @@ internal static class PreservedFogStartupCoordinator
             }
             if (selectionResult == null)
             {
-                throw new InvalidOperationException("Preserved Fog card selection returned null.");
+                GD.Print("[VakuuPlayer] Preserved Fog card selection was cancelled; skipping deferred effect.");
+                return;
             }
 
             var selected = selectionResult.ToList();
@@ -207,29 +214,56 @@ internal static class PreservedFogStartupCoordinator
                 throw new InvalidOperationException("Preserved Fog selection cards are no longer available in the deck.");
             }
 
-            foreach (var card in selected)
+            var removedCount = 0;
+            try
             {
+                foreach (var card in selected)
+                {
+                    if (NRun.Instance == null)
+                    {
+                        GD.PrintErr("[VakuuPlayer] Preserved Fog run ended during deck mutation; stopping safely.");
+                        return;
+                    }
+                    await CardPileCmd.RemoveFromDeck(card, true);
+                    if (NRun.Instance == null)
+                    {
+                        GD.PrintErr($"[VakuuPlayer] Preserved Fog run ended after removing {removedCount + 1}/{selected.Count} cards.");
+                        return;
+                    }
+                    removedCount++;
+                }
+
                 if (NRun.Instance == null)
                 {
-                    GD.PrintErr("[VakuuPlayer] Preserved Fog run ended during deck mutation; stopping safely.");
+                    GD.PrintErr("[VakuuPlayer] Preserved Fog run ended before adding Folly; stopping safely.");
                     return;
                 }
-                await CardPileCmd.RemoveFromDeck(card, true);
+                await CardPileCmd.AddCurseToDeck<Folly>(owner);
+                if (NRun.Instance == null)
+                {
+                    GD.PrintErr("[VakuuPlayer] Preserved Fog run ended after adding Folly.");
+                    return;
+                }
+                GD.Print($"[VakuuPlayer] Preserved Fog removed cards: {string.Join(", ", selected.Select(c => c.Id.Entry))}");
             }
-
-            if (NRun.Instance == null)
+            catch (Exception e)
             {
-                GD.PrintErr("[VakuuPlayer] Preserved Fog run ended before adding Folly; stopping safely.");
-                return;
+                GD.PrintErr($"[VakuuPlayer] Preserved Fog deck mutation failed after removing {removedCount}/{selected.Count} cards: {e}");
+                throw;
             }
-            await CardPileCmd.AddCurseToDeck<Folly>(owner);
-            GD.Print($"[VakuuPlayer] Preserved Fog removed cards: {string.Join(", ", selected.Select(c => c.Id.Entry))}");
         }
         finally
         {
             if (reopenMap && NRun.Instance != null && NMapScreen.Instance != null)
             {
-                NMapScreen.Instance.Open(true);
+                try
+                {
+                    NMapScreen.Instance.Open(true);
+                }
+                catch (Exception e)
+                {
+                    GD.PrintErr($"[VakuuPlayer] failed to reopen map after Preserved Fog selection: {e}");
+                }
             }
         }
     }
