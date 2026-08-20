@@ -3,7 +3,7 @@
   "name": "瓦庫尖塔",
   "author": "swear",
   "description": "玩家開局獲得全部瓦庫遺物（含負面效果，瓦庫契約取代低語耳環）；瓦庫每一回合接管並自動打牌，完成後控制權回到玩家。",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "has_pck": false,
   "has_dll": true,
   "dependencies": [],
