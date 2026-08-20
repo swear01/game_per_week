@@ -152,7 +152,7 @@ internal static class PreservedFogStartupCoordinator
         }
         finally
         {
-            if (reopenMap && NMapScreen.Instance != null)
+            if (reopenMap && NRun.Instance != null && NMapScreen.Instance != null)
             {
                 NMapScreen.Instance.Open(true);
             }

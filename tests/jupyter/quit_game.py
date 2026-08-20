@@ -8,7 +8,7 @@ from pathlib import Path
 
 GAME_PROCESS_MARKER = "/Slay the Spire 2"
 QUIT_SOURCE = Path(__file__).with_name("quit_game.swift")
-QUIT_BINARY = Path("/private/tmp/vakuu-quit-game")
+QUIT_BINARY = Path(__file__).with_name("artifacts") / "vakuu-quit-game"
 
 
 def game_pids() -> list[int]:
@@ -22,6 +22,7 @@ def game_pids() -> list[int]:
 
 
 def compile_quit_helper() -> Path:
+    QUIT_BINARY.parent.mkdir(parents=True, exist_ok=True)
     if not QUIT_BINARY.exists() or QUIT_BINARY.stat().st_mtime < QUIT_SOURCE.stat().st_mtime:
         subprocess.run(["swiftc", str(QUIT_SOURCE), "-o", str(QUIT_BINARY)], check=True)
     return QUIT_BINARY

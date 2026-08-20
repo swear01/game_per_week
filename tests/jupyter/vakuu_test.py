@@ -20,7 +20,7 @@ MOD_ROOT = GAME_APP / "Contents/MacOS/mods"
 LOG_PATH = Path.home() / "Library/Application Support/SlayTheSpire2/logs/godot.log"
 SAVE_ROOT = Path.home() / "Library/Application Support/SlayTheSpire2/steam"
 WINDOW_ID_SOURCE = REPO_ROOT / "tests/jupyter/window_id.swift"
-WINDOW_ID_BINARY = Path("/private/tmp/vakuu-window-id")
+WINDOW_ID_BINARY = REPO_ROOT / "tests/jupyter/artifacts/vakuu-window-id"
 
 
 @dataclass
