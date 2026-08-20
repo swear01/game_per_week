@@ -8,7 +8,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from quit_game import QUIT_SOURCE, compile_quit_helper, game_pids, request_graceful_quit
+from quit_game import (
+    GAME_EXECUTABLE_SUFFIX,
+    QUIT_SOURCE,
+    compile_quit_helper,
+    game_pids,
+    request_graceful_quit,
+)
 
 
 class GameShutdownTests(unittest.TestCase):
@@ -33,6 +39,11 @@ class GameShutdownTests(unittest.TestCase):
         )
 
         self.assertEqual(game_pids(), [200])
+
+    def test_swift_and_python_use_the_same_executable_suffix(self):
+        source = QUIT_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn(f'let gameExecutableSuffix = "{GAME_EXECUTABLE_SUFFIX}"', source)
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS AppKit helper test")
     def test_compiled_helper_rejects_invalid_and_non_game_processes(self):
