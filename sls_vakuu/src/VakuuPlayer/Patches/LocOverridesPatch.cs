@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
-using VakuuPlayer.Relics;
 
 namespace VakuuPlayer.Patches;
 
@@ -79,15 +78,15 @@ public static class LocOverridesPatch
         {
             "zht" => (
                 "瓦庫契約",
-                $"每回合開始 +{VakuuContract.EnergyGain} 能量。瓦庫接管你的每一回合：從左到右自動打牌，直到無牌可打、能量耗盡或打滿 {VakuuContract.MaxCardsToPlay} 張。",
+                "每回合開始時，獲得 {Energy:energyIcons()}。[red]瓦庫會替你進行每一個回合。[/red]",
                 "把你自己交給我，你就能變得和我一樣萬眾畏懼。"),
             "zhs" => (
                 "瓦库契约",
-                $"每回合开始 +{VakuuContract.EnergyGain} 能量。瓦库接管你的每一回合：从左到右自动出牌，直到无牌可打、能量耗尽或打满 {VakuuContract.MaxCardsToPlay} 张。",
+                "在每个回合开始时，获得{Energy:energyIcons()}。[red]瓦库将接管你的每个回合。[/red]",
                 "把你自己交给我，你就能变得和我一样令人畏惧。"),
             _ => (
                 "Vakuu's Contract",
-                $"Gain {VakuuContract.EnergyGain} Energy at the start of each turn. Vakuu plays every turn for you: auto-plays cards left to right until no playable cards, no energy, or {VakuuContract.MaxCardsToPlay} cards played.",
+                "Gain {Energy:energyIcons()} at the start of each turn. [red]Vakuu plays every turn for you.[/red]",
                 "Give yourself to me and you will be feared as much as I."),
         };
         var overrides = new Dictionary<string, string>
