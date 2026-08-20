@@ -12,7 +12,10 @@ class VakuuRunValidationTests(unittest.TestCase):
         lines = [
             "[VakuuHarness] attached",
             "[VakuuPlayer] VakuuContract localization ready language=eng",
+            "[VakuuHarness] VakuuContract localization resolved title=Vakuu's Contract",
+            "[VakuuPlayer] opening deferred Preserved Fog selection",
             "[VakuuHarness] confirming first 3 snapshot cards",
+            "[VakuuPlayer] Preserved Fog removed cards: STRIKE, DEFEND",
             "[VakuuHarness] starting Vakuu relics=10",
             "BLOOD_SOAKED_ROSE FIDDLE PRESERVED_FOG SERE_TALON DISTINGUISHED_CAPE CHOICES_PARADOX MUSIC_BOX LORDS_PARASOL JEWELED_MASK VAKUU_CONTRACT",
             "[VakuuHarness] first combat room entered",

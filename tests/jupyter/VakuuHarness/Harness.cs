@@ -641,7 +641,24 @@ public static class Harness
             _lastStartingRelicSignature = signature;
             GD.Print($"[VakuuHarness] starting Vakuu relics={vakuuIds.Count} total relics={ids.Count} ids={string.Join(",", ids)}");
         }
-        return VakuuRelicIds.SetEquals(vakuuIds);
+        if (!VakuuRelicIds.SetEquals(vakuuIds))
+        {
+            return false;
+        }
+
+        var contract = player.Relics.First(relic => relic.Id.Entry == "VAKUU_CONTRACT");
+        var title = contract.Title.GetRawText();
+        var description = contract.DynamicDescription.GetRawText();
+        var flavor = contract.Flavor.GetRawText();
+        if (string.IsNullOrWhiteSpace(title)
+            || string.IsNullOrWhiteSpace(description)
+            || string.IsNullOrWhiteSpace(flavor))
+        {
+            throw new InvalidOperationException("VakuuContract localization resolved an empty title, description, or flavor.");
+        }
+
+        GD.Print($"[VakuuHarness] VakuuContract localization resolved title={title} description={description} flavor={flavor}");
+        return true;
     }
 
     private static void LogCombatHand()

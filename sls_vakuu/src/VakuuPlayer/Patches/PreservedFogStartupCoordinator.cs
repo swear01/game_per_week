@@ -44,7 +44,9 @@ internal static class PreservedFogStartupCoordinator
             return false;
         }
 
-        var removeCount = relic.DynamicVars.Cards.IntValue;
+        var removeCount = relic.DynamicVars.TryGetValue("Cards", out var cardsVar)
+            ? cardsVar.IntValue
+            : 0;
         if (removeCount <= 0)
         {
             failure = new InvalidOperationException($"Preserved Fog removal count was invalid: {removeCount}.");
@@ -135,7 +137,8 @@ internal static class PreservedFogStartupCoordinator
             ClearPending(pending);
             return;
         }
-        if (NRun.Instance == null)
+        var run = NRun.Instance;
+        if (run == null)
         {
             ClearPending(pending);
             throw new InvalidOperationException("NRun is not available for the deferred Preserved Fog selection.");
@@ -190,15 +193,14 @@ internal static class PreservedFogStartupCoordinator
                 prefs,
                 card => card.IsRemovable && snapshotIndex.ContainsKey(card),
                 card => snapshotIndex.TryGetValue(card, out var index) ? index : int.MaxValue);
-            if (NRun.Instance == null)
+            if (!ReferenceEquals(NRun.Instance, run))
             {
-                GD.PrintErr("[VakuuPlayer] Preserved Fog selection ended after the run was closed; skipping deck mutation.");
+                GD.PrintErr("[VakuuPlayer] Preserved Fog selection ended after the original run was closed; skipping deck mutation.");
                 return;
             }
             if (selectionResult == null)
             {
-                GD.Print("[VakuuPlayer] Preserved Fog card selection was cancelled; skipping deferred effect.");
-                return;
+                throw new InvalidOperationException("Preserved Fog card selection was cancelled.");
             }
 
             var selected = selectionResult.ToList();
@@ -223,29 +225,29 @@ internal static class PreservedFogStartupCoordinator
             {
                 foreach (var card in selected)
                 {
-                    if (NRun.Instance == null)
+                    if (!ReferenceEquals(NRun.Instance, run))
                     {
-                        GD.PrintErr("[VakuuPlayer] Preserved Fog run ended during deck mutation; stopping safely.");
+                        GD.PrintErr("[VakuuPlayer] Preserved Fog original run ended during deck mutation; stopping safely.");
                         return;
                     }
                     await CardPileCmd.RemoveFromDeck(card, true);
-                    if (NRun.Instance == null)
+                    if (!ReferenceEquals(NRun.Instance, run))
                     {
-                        GD.PrintErr($"[VakuuPlayer] Preserved Fog run ended after removing {removedCount + 1}/{selected.Count} cards.");
+                        GD.PrintErr($"[VakuuPlayer] Preserved Fog original run ended after removing {removedCount + 1}/{selected.Count} cards.");
                         return;
                     }
                     removedCount++;
                 }
 
-                if (NRun.Instance == null)
+                if (!ReferenceEquals(NRun.Instance, run))
                 {
-                    GD.PrintErr("[VakuuPlayer] Preserved Fog run ended before adding Folly; stopping safely.");
+                    GD.PrintErr("[VakuuPlayer] Preserved Fog original run ended before adding Folly; stopping safely.");
                     return;
                 }
                 await CardPileCmd.AddCurseToDeck<Folly>(owner);
-                if (NRun.Instance == null)
+                if (!ReferenceEquals(NRun.Instance, run))
                 {
-                    GD.PrintErr("[VakuuPlayer] Preserved Fog run ended after adding Folly.");
+                    GD.PrintErr("[VakuuPlayer] Preserved Fog original run ended after adding Folly.");
                     return;
                 }
                 GD.Print($"[VakuuPlayer] Preserved Fog removed cards: {string.Join(", ", selected.Select(c => c.Id.Entry))}");
@@ -258,7 +260,7 @@ internal static class PreservedFogStartupCoordinator
         }
         finally
         {
-            if (reopenMap && NRun.Instance != null && NMapScreen.Instance is { IsOpen: false } currentMap)
+            if (reopenMap && ReferenceEquals(NRun.Instance, run) && NMapScreen.Instance is { IsOpen: false } currentMap)
             {
                 try
                 {

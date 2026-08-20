@@ -77,6 +77,11 @@ public static class LocOverridesPatch
     private static void ApplyVakuuContractLoc(LocTable table, string language)
     {
         var keyPrefix = ModelDb.GetId<VakuuContract>().Entry;
+        if (string.IsNullOrWhiteSpace(keyPrefix))
+        {
+            throw new InvalidOperationException("VakuuContract model ID did not provide a localization key prefix.");
+        }
+
         var hasTranslation = language is EnglishLanguage or SimplifiedChineseLanguage or TraditionalChineseLanguage;
         if (!hasTranslation)
         {

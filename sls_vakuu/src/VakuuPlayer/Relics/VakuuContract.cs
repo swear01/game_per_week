@@ -34,9 +34,7 @@ public sealed class VakuuContract : RelicModel
     public override RelicRarity Rarity => RelicRarity.Ancient;
 
     // 圖示借用低語耳環的資源（瓦庫契約是其替代品）
-    public override string PackedIconPath => "res://images/relics/whispering_earring.png";
-    protected override string PackedIconOutlinePath => "res://images/relics/whispering_earring.png";
-    protected override string BigIconPath => "res://images/relics/whispering_earring.png";
+    protected override string IconBaseName => "whispering_earring";
 
     public override decimal ModifyMaxEnergy(Player player, decimal amount)
     {
@@ -55,6 +53,7 @@ public sealed class VakuuContract : RelicModel
 
     public override async Task AfterActEntered()
     {
+        await base.AfterActEntered();
         var owner = Owner;
         if (owner == null)
         {

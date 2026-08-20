@@ -240,6 +240,7 @@ PreloadRunAssets
 2. `RunManager.EnterAct` 在 `NRun.Create` 後會初始化第一幕、觸發 `ActEntered`、淡入，再 await `Hook.AfterActEntered(runState)`。
 3. `VakuuContract.AfterActEntered()` await 原生 `CardSelectCmd.FromDeckGeneric` 選牌 UI；以 snapshot filter 排除後續 SereTalon/DistinguishedCape 新增的牌。
 4. 玩家選滿 3 張後用原生 `CardPileCmd.RemoveFromDeck`，再加入 Folly；任何例外直接讓 run 啟動失敗，不隨機刪牌。
+5. `ApplyPendingAsync` 保存原始 `NRun` reference，在每個 await 後以 reference identity 驗證；若選牌取消則以明確例外失敗，不能讓玩家跳過 Preserved Fog 的代價。
 
 不要用全域 `ShouldSelectLocalCard` patch：它不能建立 NRun/overlay，且會影響所有單人選牌。若 map 已在 `AfterActEntered` 時開啟，選牌協調器暫時關閉 map，完成後恢復。
 
