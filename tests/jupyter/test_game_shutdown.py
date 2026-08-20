@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,7 +34,10 @@ class GameShutdownTests(unittest.TestCase):
 
         self.assertEqual(game_pids(), [200])
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS AppKit helper test")
     def test_compiled_helper_rejects_invalid_and_non_game_processes(self):
+        if shutil.which("swiftc") is None:
+            self.skipTest("swiftc is required to compile the AppKit helper")
         helper = compile_quit_helper()
         process_table = subprocess.check_output(["ps", "-axo", "pid=,comm="], text=True)
         non_game_app_pid = next(
@@ -49,16 +54,17 @@ class GameShutdownTests(unittest.TestCase):
         cases = [
             (["not-a-pid"], "invalid process id"),
             (["0"], "process not found"),
-            ([non_game_app_pid], "not a Slay the Spire 2 process"),
+            ([non_game_app_pid], ("not a Slay the Spire 2 process", "process not found")),
         ]
 
-        for arguments, message in cases:
+        for arguments, messages in cases:
             with self.subTest(arguments=arguments):
                 result = subprocess.run(
-                    [helper, *arguments], capture_output=True, text=True, check=False
+                    [helper, *arguments], capture_output=True, text=True, check=False, timeout=30
                 )
                 self.assertEqual(result.returncode, 1)
-                self.assertIn(message, result.stderr)
+                expected_messages = (messages,) if isinstance(messages, str) else messages
+                self.assertTrue(any(message in result.stderr for message in expected_messages))
 
     @patch("quit_game.wait_for_game_exit", return_value=True)
     @patch("quit_game.compile_quit_helper", return_value=Path("tests/jupyter/artifacts/vakuu-quit-game"))

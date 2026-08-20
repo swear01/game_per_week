@@ -85,15 +85,15 @@ public sealed class VakuuContract : RelicModel
             return;
         }
 
-        Flash();
-
-        using var _ = CardSelectCmd.PushSelector(new VakuuCardSelector(), false);
-
         var playerCombatState = owner.PlayerCombatState;
         if (playerCombatState == null)
         {
             return;
         }
+
+        Flash();
+
+        using var _ = CardSelectCmd.PushSelector(new VakuuCardSelector(), false);
 
         var cardsPlayed = 0;
         var startTurn = playerCombatState.TurnNumber;

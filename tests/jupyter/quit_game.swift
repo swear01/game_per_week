@@ -28,6 +28,11 @@ for argument in arguments {
         continue
     }
     found = true
+    guard !application.isTerminated else {
+        fputs("pid \(pidValue): process already exited\n", stderr)
+        failed = true
+        continue
+    }
     if !application.terminate() {
         fputs("pid \(pidValue): terminate request failed\n", stderr)
         failed = true
