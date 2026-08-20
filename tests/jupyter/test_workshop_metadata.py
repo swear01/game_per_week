@@ -6,8 +6,6 @@ from pathlib import Path
 
 
 WORKSHOP = Path(__file__).parents[2] / "sls_vakuu/deploy/VakuuPlayer/workshop.json"
-WORKSHOP_URL = "https://steamcommunity.com/sharedfiles/filedetails/?id=3784362897"
-SOURCE_URL = "https://github.com/swear01/game_per_week"
 
 
 class WorkshopMetadataTests(unittest.TestCase):
@@ -22,24 +20,24 @@ class WorkshopMetadataTests(unittest.TestCase):
         self.assertNotIn("特色", self.data["description"])
         self.assertNotIn("連結", self.data["description"])
 
-    def test_each_language_contains_only_its_own_copy_and_links(self):
+    def test_each_language_contains_only_its_own_copy(self):
         english = self.localizations["english"]["description"]
         simplified = self.localizations["schinese"]["description"]
         traditional = self.localizations["tchinese"]["description"]
 
         for description in (english, simplified, traditional):
-            self.assertIn(WORKSHOP_URL, description)
-            self.assertIn(SOURCE_URL, description)
+            self.assertNotIn("[url=", description)
+            self.assertNotIn("https://", description)
 
         self.assertIn("Features", english)
         self.assertNotIn("特色", english)
         self.assertNotIn("链接", english)
         self.assertIn("特色", simplified)
-        self.assertIn("链接", simplified)
+        self.assertNotIn("链接", simplified)
         self.assertNotIn("Features", simplified)
         self.assertNotIn("連結", simplified)
         self.assertIn("特色", traditional)
-        self.assertIn("連結", traditional)
+        self.assertNotIn("連結", traditional)
         self.assertNotIn("Features", traditional)
         self.assertNotIn("链接", traditional)
 

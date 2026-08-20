@@ -8,6 +8,8 @@
 ./test.sh   # build → 複製到 MacOS/mods/VakuuPlayer → 重啟遊戲
 ```
 
+從 repository root 執行 `make test` 可跑不需要啟動遊戲的自動化測試；它不取代下面的實機整合測試。
+
 - 本地 mods 目錄（macOS）：`<遊戲>/SlayTheSpire2.app/Contents/MacOS/mods/<ModId>/`
 - 本地版號 > Workshop 版號時，遊戲自動停用 Workshop 版、載入本地版
 - 只改 .cs → 只 build；改資源/本地化/場景 → 需 Godot Publish（打包 pck）
