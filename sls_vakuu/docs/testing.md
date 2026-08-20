@@ -25,7 +25,7 @@
 jupyter notebook tests/jupyter/vakuu_gameplay_test.ipynb
 ```
 
-Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫遺物、VakuuContract 的 title/description/flavor 實際解析、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。它只啟用測試所需的本機 `VakuuPlayer`／`VakuuHarness`，不會停用其他 Workshop 或本機模組；測試結束會移除 harness 並還原存檔設定。測試 log 留在 `tests/jupyter/artifacts/`，截圖留在 `assets/screenshots/`。
+Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫遺物、VakuuContract 的 title/description/flavor 實際解析、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。測試最後也以 debug ancient room 顯示 Neow 的瓦庫台詞，並用精確遊戲視窗擷取證據圖。它只啟用測試所需的本機 `VakuuPlayer`／`VakuuHarness`，不會停用其他 Workshop 或本機模組；測試結束會移除 harness 並還原存檔設定。測試 log 留在 `tests/jupyter/artifacts/`，截圖留在 `assets/screenshots/`。
 
 ## 驗證清單（每次迭代）
 

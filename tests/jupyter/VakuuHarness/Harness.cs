@@ -65,6 +65,7 @@ public static class Harness
     private static bool _endTurnCommandSent;
     private static bool _winCommandSent;
     private static bool _actCommandSent;
+    private static bool _neowCommandSent;
     private static Task? _commandTask;
     private static string? _commandName;
     private static bool _commandCompletionLogged;
@@ -452,6 +453,35 @@ public static class Harness
                         return;
                     }
 
+                    if (!_neowCommandSent)
+                    {
+                        if (NMapScreen.Instance?.IsOpen == true)
+                        {
+                            NMapScreen.Instance.Close(false);
+                        }
+                        if (StartCommand("ancient NEOW"))
+                        {
+                            _neowCommandSent = true;
+                        }
+                        return;
+                    }
+
+                    if (!CommandCompleted())
+                    {
+                        return;
+                    }
+
+                    var ancientLayout = FindNodeByTypeName(root, "NAncientEventLayout");
+                    var dialogueLine = FindNodeByTypeName(root, "NAncientDialogueLine");
+                    if (ancientLayout is not CanvasItem ancientCanvas
+                        || dialogueLine is not CanvasItem dialogueCanvas
+                        || !ancientCanvas.IsVisibleInTree()
+                        || !dialogueCanvas.IsVisibleInTree())
+                    {
+                        return;
+                    }
+
+                    GD.Print("[VakuuHarness] Neow dialogue visible");
                     _finished = true;
                     LogAct3Result();
                     return;

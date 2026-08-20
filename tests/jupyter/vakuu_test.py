@@ -17,6 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT = REPO_ROOT / "sls_vakuu"
 GAME_APP = Path.home() / "Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app"
 MOD_ROOT = GAME_APP / "Contents/MacOS/mods"
+WINDOW_ID_SOURCE = Path(__file__).with_name("window_id.swift")
+WINDOW_ID_BINARY = Path(__file__).with_name("artifacts") / "vakuu-window-id"
 LOG_PATH = Path.home() / "Library/Application Support/SlayTheSpire2/logs/godot.log"
 SAVE_ROOT = Path.home() / "Library/Application Support/SlayTheSpire2/steam"
 
@@ -35,6 +37,17 @@ def run(command: list[str]) -> None:
     env = os.environ.copy()
     env["PATH"] = f"{Path.home() / '.dotnet'}:{env.get('PATH', '')}"
     subprocess.run(command, cwd=ROOT, check=True, env=env)
+
+
+def compile_window_id_helper() -> Path:
+    WINDOW_ID_BINARY.parent.mkdir(parents=True, exist_ok=True)
+    if not WINDOW_ID_BINARY.exists() or WINDOW_ID_BINARY.stat().st_mtime < WINDOW_ID_SOURCE.stat().st_mtime:
+        subprocess.run(
+            ["swiftc", str(WINDOW_ID_SOURCE), "-o", str(WINDOW_ID_BINARY)],
+            check=True,
+            timeout=120,
+        )
+    return WINDOW_ID_BINARY
 
 
 def settings_path() -> Path:
@@ -124,13 +137,24 @@ def launch(session: TestSession) -> None:
 def capture(session: TestSession, name: str) -> Path:
     path = session.screenshots_dir / name
     path.unlink(missing_ok=True)
-    run(["/usr/sbin/screencapture", "-x", str(path)])
+    window_id = subprocess.check_output(
+        [compile_window_id_helper()], text=True, timeout=30
+    ).strip()
+    if not window_id.isdigit():
+        raise RuntimeError(f"window helper returned invalid window id: {window_id!r}")
+    run(["/usr/sbin/screencapture", "-x", "-l", window_id, str(path)])
     if not path.exists() or path.stat().st_size == 0:
         raise RuntimeError(f"screenshot was not created: {path}")
     return path
 
 
-def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | None = None, timeout: int = 600) -> None:
+def wait_for_marker(
+    session: TestSession,
+    marker: str,
+    screenshot_name: str | None = None,
+    timeout: int = 600,
+    screenshot_delay: float = 0,
+) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         text = LOG_PATH.read_text(encoding="utf-8", errors="replace") if LOG_PATH.exists() else ""
@@ -140,6 +164,8 @@ def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | No
             raise RuntimeError(f"harness reported failure while waiting for {marker!r}\n{tail}")
         if marker in text:
             if screenshot_name is not None:
+                if screenshot_delay > 0:
+                    time.sleep(screenshot_delay)
                 capture(session, screenshot_name)
             return
         time.sleep(2)
@@ -148,6 +174,12 @@ def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | No
 
 
 def finish(session: TestSession) -> dict[str, object]:
+    wait_for_marker(
+        session,
+        "[VakuuHarness] Neow dialogue visible",
+        "06-neow-vakuu.png",
+        screenshot_delay=3,
+    )
     wait_for_marker(session, "[VakuuHarness] FINAL ", "05-final.png")
     shutil.copy2(LOG_PATH, session.artifacts_dir / "godot.log")
     return validate_log(session.artifacts_dir / "godot.log")
