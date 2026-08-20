@@ -25,6 +25,13 @@ namespace VakuuHarness;
 [ModInitializer(nameof(Initialize))]
 public static class Harness
 {
+    private const int WarmupFrames = 600;
+    private const int HeartbeatInterval = 120;
+    private const int EventOptionDelayFrames = 180;
+    private const int CombatWaitFrames = 360;
+    private const int WinWaitFrames = 240;
+    private const int ActWaitFrames = 240;
+    private const int MaxTestFrames = 18_000;
     private static readonly Harmony Harmony = new("vakuu.harness");
     private static readonly HashSet<string> VakuuRelicIds =
     [
@@ -42,15 +49,22 @@ public static class Harness
     private static bool _started;
     private static bool _selectionConfirmed;
     private static bool _optionChosen;
+    private static Task? _optionTask;
     private static bool _startingRelicsLogged;
+    private static string? _lastStartingRelicSignature;
     private static bool _needFight;
     private static bool _fightCommandSent;
+    private static Task? _travelTask;
     private static bool _combatLogged;
     private static bool _combatChoiceConfirmed;
     private static bool _endTurnCommandSent;
     private static bool _winCommandSent;
     private static bool _actCommandSent;
+    private static Task? _commandTask;
+    private static string? _commandName;
+    private static bool _commandCompletionLogged;
     private static bool _finished;
+    private static bool _failed;
     private static int _optionDelay;
     private static int _combatFrames;
     private static int _winFrames;
@@ -62,6 +76,7 @@ public static class Harness
     private static bool _openedSingleplayer;
     private static bool _openedCharacterSelect;
     private static int _frames;
+    private static int _totalFrames;
 
     public static void Initialize()
     {
@@ -78,15 +93,12 @@ public static class Harness
         var autoPlayPatches = Harmony.GetPatchInfo(autoPlay);
         GD.Print($"[VakuuHarness] AutoPlay patches prefixes={autoPlayPatches?.Prefixes.Count ?? -1} postfixes={autoPlayPatches?.Postfixes.Count ?? -1}");
 
-        var contractType = AccessTools.TypeByName("VakuuPlayer.Relics.VakuuContract");
-        var contractHook = contractType == null
-            ? null
-            : AccessTools.Method(contractType, "AfterAutoPrePlayPhaseEnteredLate");
-        if (contractHook != null)
-        {
-            Harmony.Patch(contractHook, prefix: new HarmonyMethod(typeof(Harness), nameof(ContractPrefix)));
-        }
-        var contractPatches = contractHook == null ? null : Harmony.GetPatchInfo(contractHook);
+        var contractType = AccessTools.TypeByName("VakuuPlayer.Relics.VakuuContract")
+            ?? throw new MissingMethodException("VakuuPlayer.Relics.VakuuContract");
+        var contractHook = AccessTools.Method(contractType, "AfterAutoPrePlayPhaseEnteredLate")
+            ?? throw new MissingMethodException(contractType.FullName, "AfterAutoPrePlayPhaseEnteredLate");
+        Harmony.Patch(contractHook, prefix: new HarmonyMethod(typeof(Harness), nameof(ContractPrefix)));
+        var contractPatches = Harmony.GetPatchInfo(contractHook);
         GD.Print($"[VakuuHarness] Contract hook found={contractHook != null} declaring={contractHook?.DeclaringType?.FullName} virtual={contractHook?.IsVirtual} base={contractHook?.GetBaseDefinition().DeclaringType?.FullName} prefixes={contractPatches?.Prefixes.Count ?? -1} postfixes={contractPatches?.Postfixes.Count ?? -1}");
 
         var hookMethod = AccessTools.Method(typeof(Hook), nameof(Hook.AfterAutoPrePlayPhaseEntered));
@@ -106,11 +118,13 @@ public static class Harness
         var method = AccessTools.Method(typeof(NCharacterSelectScreen), nameof(NCharacterSelectScreen.SelectCharacter));
         var patches = method == null ? null : Harmony.GetPatchInfo(method);
         GD.Print($"[VakuuHarness] SelectCharacter patches prefixes={patches?.Prefixes.Count ?? -1} postfixes={patches?.Postfixes.Count ?? -1} finalizers={patches?.Finalizers.Count ?? -1}");
-        if (Engine.GetMainLoop() is SceneTree tree)
+        if (Engine.GetMainLoop() is not SceneTree tree)
         {
-            tree.ProcessFrame += () => Tick(tree);
-            GD.Print("[VakuuHarness] attached");
+            throw new InvalidOperationException("VakuuHarness requires a SceneTree main loop.");
         }
+
+        tree.ProcessFrame += () => Tick(tree);
+        GD.Print("[VakuuHarness] attached");
     }
 
     private static void HookPrefix()
@@ -157,12 +171,23 @@ public static class Harness
 
     private static void Tick(SceneTree tree)
     {
-        if (++_frames < 600)
+        if (_failed || _finished)
         {
             return;
         }
 
-        if (_frames % 120 == 0)
+        if (++_totalFrames > MaxTestFrames)
+        {
+            Fail($"harness exceeded {MaxTestFrames} frames without completing");
+            return;
+        }
+
+        if (++_frames < WarmupFrames)
+        {
+            return;
+        }
+
+        if (_frames % HeartbeatInterval == 0)
         {
             var names = new List<string>();
             Collect(tree.Root, names, 0);
@@ -182,7 +207,7 @@ public static class Harness
                         : typeof(NEventRoom).GetField("_event", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(eventRoom) as EventModel;
                     if (eventModel?.Id.Entry == "VAKUU" && eventModel.CurrentOptions.Count == 1)
                     {
-                        if (++_optionDelay < 180)
+                        if (++_optionDelay < EventOptionDelayFrames)
                         {
                             return;
                         }
@@ -194,9 +219,19 @@ public static class Harness
 
                         _optionChosen = true;
                         GD.Print($"[VakuuHarness] choosing Accept; relics before={eventModel.Owner.Relics.Count}");
-                        _ = ChooseOptionAsync(eventModel);
+                        _optionTask = ChooseOptionAsync(eventModel);
                         return;
                     }
+                }
+
+                if (_optionTask != null)
+                {
+                    if (!TaskCompleted(_optionTask, "event choice"))
+                    {
+                        return;
+                    }
+
+                    _optionTask = null;
                 }
 
                 if (!_startingRelicsLogged)
@@ -206,6 +241,18 @@ public static class Harness
 
                 if (_needFight && !_fightCommandSent)
                 {
+                    if (_travelTask != null)
+                    {
+                        if (!TaskCompleted(_travelTask, "map travel"))
+                        {
+                            return;
+                        }
+
+                        _travelTask = null;
+                        _fightCommandSent = true;
+                        return;
+                    }
+
                     var map = FindNode<NMapScreen>(root);
                     if (map == null)
                     {
@@ -226,9 +273,8 @@ public static class Harness
                         throw new InvalidOperationException("Harness could not find a monster map point.");
                     }
 
-                    _fightCommandSent = true;
                     GD.Print($"[VakuuHarness] traveling to actual first monster coord={point.Point.coord}");
-                    _ = TravelAsync(map, point.Point.coord);
+                    _travelTask = TravelAsync(map, point.Point.coord);
                     return;
                 }
 
@@ -275,7 +321,7 @@ public static class Harness
                 if (_combatLogged && !_endTurnCommandSent)
                 {
                     _combatFrames++;
-                    if (_combatFrames < 360)
+                    if (_combatFrames < CombatWaitFrames)
                     {
                         return;
                     }
@@ -297,35 +343,49 @@ public static class Harness
                 if (_combatLogged && _endTurnCommandSent && !_winCommandSent)
                 {
                     _combatFrames++;
-                    if (_combatFrames < 360)
+                    if (_combatFrames < CombatWaitFrames)
                     {
                         return;
                     }
 
                     LogCombatHand();
                     GD.Print($"[VakuuHarness] first combat auto-play count={_autoPlayCount} cards={string.Join(",", AutoPlayedCards)}");
-                    _winCommandSent = true;
-                    ProcessCommand("win");
+                    if (StartCommand("win"))
+                    {
+                        _winCommandSent = true;
+                    }
                     return;
                 }
 
                 if (_winCommandSent && !_actCommandSent)
                 {
-                    _winFrames++;
-                    if (_winFrames < 240 || CombatManager.Instance.IsInProgress)
+                    if (!CommandCompleted())
                     {
                         return;
                     }
 
-                    _actCommandSent = true;
-                    ProcessCommand("act 3");
+                    _winFrames++;
+                    if (_winFrames < WinWaitFrames || CombatManager.Instance.IsInProgress)
+                    {
+                        return;
+                    }
+
+                    if (StartCommand("act 3"))
+                    {
+                        _actCommandSent = true;
+                    }
                     return;
                 }
 
                 if (_actCommandSent && !_finished)
                 {
+                    if (!CommandCompleted())
+                    {
+                        return;
+                    }
+
                     _actFrames++;
-                    if (_actFrames < 240)
+                    if (_actFrames < ActWaitFrames)
                     {
                         return;
                     }
@@ -417,7 +477,7 @@ public static class Harness
         catch (Exception e)
         {
             _started = true;
-            GD.PrintErr($"[VakuuHarness] failed: {e}");
+            Fail(e.ToString());
         }
     }
 
@@ -437,7 +497,7 @@ public static class Harness
         }
         catch (Exception e)
         {
-            GD.PrintErr($"[VakuuHarness] event continuation failed: {e}");
+            Fail($"event continuation failed: {e}");
         }
     }
 
@@ -450,31 +510,69 @@ public static class Harness
         }
         catch (Exception e)
         {
-            GD.PrintErr($"[VakuuHarness] actual map travel failed: {e}");
+            Fail($"actual map travel failed: {e}");
         }
     }
 
-    private static void ProcessCommand(string command)
+    private static bool StartCommand(string command)
     {
         var result = new DevConsole(true).ProcessCommand(command);
         GD.Print($"[VakuuHarness] command='{command}' success={result.success} message={result.msg}");
-        if (result.task != null)
+        if (!result.success)
         {
-            _ = AwaitCommand(command, result.task);
+            Fail($"command '{command}' failed: {result.msg}");
+            return false;
         }
+
+        _commandName = command;
+        _commandTask = result.task ?? Task.CompletedTask;
+        _commandCompletionLogged = false;
+        return true;
     }
 
-    private static async Task AwaitCommand(string command, Task task)
+    private static bool CommandCompleted()
     {
-        try
+        if (_commandTask == null || !TaskCompleted(_commandTask, $"command '{_commandName}'"))
         {
-            await task;
-            GD.Print($"[VakuuHarness] command task complete='{command}'");
+            return false;
         }
-        catch (Exception e)
+
+        if (!_commandCompletionLogged)
         {
-            GD.PrintErr($"[VakuuHarness] command task failed='{command}': {e}");
+            GD.Print($"[VakuuHarness] command task complete='{_commandName}'");
+            _commandCompletionLogged = true;
         }
+        return true;
+    }
+
+    private static bool TaskCompleted(Task task, string operation)
+    {
+        if (!task.IsCompleted)
+        {
+            return false;
+        }
+        if (task.IsCanceled)
+        {
+            Fail($"{operation} was cancelled");
+            return false;
+        }
+        if (task.IsFaulted)
+        {
+            Fail($"{operation} failed: {task.Exception?.GetBaseException()}");
+            return false;
+        }
+        return true;
+    }
+
+    private static void Fail(string message)
+    {
+        if (_failed)
+        {
+            return;
+        }
+        _failed = true;
+        _finished = true;
+        GD.PrintErr($"[VakuuHarness] failed: {message}");
     }
 
     private static int CurrentCombatTurn()
@@ -493,8 +591,13 @@ public static class Harness
 
         var ids = player.Relics.Select(relic => relic.Id.Entry).ToList();
         var vakuuIds = ids.Where(VakuuRelicIds.Contains).ToList();
-        GD.Print($"[VakuuHarness] starting Vakuu relics={vakuuIds.Count} total relics={ids.Count} ids={string.Join(",", ids)}");
-        return vakuuIds.Count == VakuuRelicIds.Count;
+        var signature = string.Join(",", ids.Order());
+        if (signature != _lastStartingRelicSignature)
+        {
+            _lastStartingRelicSignature = signature;
+            GD.Print($"[VakuuHarness] starting Vakuu relics={vakuuIds.Count} total relics={ids.Count} ids={string.Join(",", ids)}");
+        }
+        return VakuuRelicIds.SetEquals(vakuuIds);
     }
 
     private static void LogCombatHand()
@@ -525,22 +628,7 @@ public static class Harness
         var actIndex = typeof(RunState).GetProperty(nameof(RunState.CurrentActIndex))?.GetValue(state);
         GD.Print($"[VakuuHarness] act 3 result currentActIndex={actIndex} gloryAncients={string.Join(",", ancients)} containsVakuu={ancients.Contains("VAKUU")}");
         GD.Print($"[VakuuHarness] combat auto-phase turns={string.Join(",", AutoPhaseTurns)} auto-play turns={string.Join(",", AutoPlayTurns)}");
-        GD.Print($"[VakuuHarness] FINAL firstCombatAutoPlayCount={_autoPlayCount} distinctAutoPlayTurns={string.Join(",", AutoPlayTurns.Distinct().Order())} thirdActVakuuExcluded={!ancients.Contains("VAKUU")}");
-    }
-
-    private static IEnumerable<T> FindNodes<T>(Node node) where T : Node
-    {
-        if (node is T match)
-        {
-            yield return match;
-        }
-        foreach (var child in node.GetChildren())
-        {
-            foreach (var result in FindNodes<T>(child))
-            {
-                yield return result;
-            }
-        }
+        GD.Print($"[VakuuHarness] FINAL firstCombatAutoPlayCount={_autoPlayCount} distinctAutoPlayTurns={string.Join(",", AutoPlayTurns.Distinct().Order())} thirdActVakuuPresent={ancients.Contains("VAKUU")}");
     }
 
     private static Node? FindNodeByTypeName(Node node, string typeName)

@@ -25,23 +25,23 @@ public static class LocOverridesPatch
                 return;
             }
 
-            if (__result.tables.TryGetValue("ancients", out var ancients))
-            {
-                ApplyNeowOverrides(ancients, language);
-            }
-
             if (__result.tables.TryGetValue("relics", out var relics))
             {
                 ApplyVakuuContractLoc(relics, language);
             }
+
+            if (__result.tables.TryGetValue("ancients", out var ancients))
+            {
+                ApplyNeowOverrides(ancients);
+            }
         }
         catch (System.Exception e)
         {
-            FileLog.Log($"VakuuPlayer: loc override failed: {e.Message}");
+            FileLog.Log($"VakuuPlayer: loc override failed: {e}");
         }
     }
 
-    private static void ApplyNeowOverrides(LocTable table, string language)
+    private static void ApplyNeowOverrides(LocTable table)
     {
         var overrides = new Dictionary<string, string>();
         foreach (var neowKey in table.Keys.Where(k => k.StartsWith("NEOW.talk.")))
@@ -56,7 +56,7 @@ public static class LocOverridesPatch
         if (overrides.Count > 0)
         {
             table.MergeWith(overrides);
-            FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries, lang={language})");
+            FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries)");
         }
     }
 

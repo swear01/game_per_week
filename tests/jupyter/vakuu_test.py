@@ -133,6 +133,10 @@ def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | No
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         text = LOG_PATH.read_text(encoding="utf-8", errors="replace") if LOG_PATH.exists() else ""
+        failure_marker = "[VakuuHarness] failed:"
+        if failure_marker in text:
+            tail = text[-4000:]
+            raise RuntimeError(f"harness reported failure while waiting for {marker!r}\n{tail}")
         if marker in text:
             if screenshot_name is not None:
                 capture(session, screenshot_name)

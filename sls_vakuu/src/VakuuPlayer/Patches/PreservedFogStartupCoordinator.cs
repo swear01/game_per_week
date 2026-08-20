@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Godot;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -60,7 +61,7 @@ internal static class PreservedFogStartupCoordinator
         var previous = Interlocked.Exchange(ref _pending, pending);
         if (previous != null && ReferenceEquals(previous.Owner, owner))
         {
-            Interlocked.CompareExchange(ref _pending, null, pending);
+            Interlocked.CompareExchange(ref _pending, previous, pending);
             failure = new InvalidOperationException("Preserved Fog startup selection was deferred more than once for the same run.");
             return true;
         }
@@ -70,6 +71,22 @@ internal static class PreservedFogStartupCoordinator
         }
         GD.Print($"[VakuuPlayer] Preserved Fog startup effect deferred until AfterActEntered (snapshot={cards.Count})");
         return true;
+    }
+
+    private static void ClearPending(PendingSelection pending)
+    {
+        Interlocked.CompareExchange(ref _pending, null, pending);
+    }
+
+    private static void ClearPending()
+    {
+        Interlocked.Exchange(ref _pending, null);
+    }
+
+    [HarmonyPatch(typeof(RunManager), nameof(RunManager.OnEnded))]
+    private static class RunEndPatch
+    {
+        private static void Prefix() => ClearPending();
     }
 
     public static async Task ApplyPendingAsync(Player owner)
@@ -86,12 +103,14 @@ internal static class PreservedFogStartupCoordinator
         }
         if (NRun.Instance == null)
         {
+            ClearPending(pending);
             throw new InvalidOperationException("NRun is not available for the deferred Preserved Fog selection.");
         }
 
         var deckPile = PileTypeExtensions.GetPile(PileType.Deck, owner);
         if (deckPile == null)
         {
+            ClearPending(pending);
             throw new InvalidOperationException("Player deck pile is not initialized for the deferred Preserved Fog selection.");
         }
 
@@ -102,6 +121,7 @@ internal static class PreservedFogStartupCoordinator
             .ToList();
         if (unavailable.Count > 0)
         {
+            ClearPending(pending);
             throw new InvalidOperationException($"Preserved Fog snapshot cards are no longer removable: {string.Join(", ", unavailable)}");
         }
 
@@ -112,13 +132,14 @@ internal static class PreservedFogStartupCoordinator
 
         var map = NMapScreen.Instance;
         var reopenMap = map?.IsOpen == true;
-        if (reopenMap)
-        {
-            map!.Close(false);
-        }
 
         try
         {
+            if (reopenMap)
+            {
+                map!.Close(false);
+            }
+
             GD.Print("[VakuuPlayer] opening deferred Preserved Fog selection");
             var snapshotIndex = new Dictionary<CardModel, int>(ReferenceEqualityComparer.Instance);
             for (var index = 0; index < pending.Cards.Count; index++)

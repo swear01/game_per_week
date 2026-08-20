@@ -8,13 +8,21 @@ if arguments.isEmpty {
 }
 
 var found = false
-var requested = false
+var failed = false
 for argument in arguments {
-    guard let pidValue = Int32(argument), let application = NSRunningApplication(processIdentifier: pid_t(pidValue)) else {
+    guard let pidValue = Int32(argument),
+          let application = NSRunningApplication(processIdentifier: pid_t(pidValue)) else {
+        failed = true
+        continue
+    }
+    guard application.executableURL?.path.contains("/Slay the Spire 2") == true else {
+        failed = true
         continue
     }
     found = true
-    requested = application.terminate() || requested
+    if !application.terminate() {
+        failed = true
+    }
 }
 
-exit(found && requested ? 0 : 1)
+exit(found && !failed ? 0 : 1)

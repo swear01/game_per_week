@@ -45,6 +45,21 @@ def validate_log(path: str | Path) -> dict[str, object]:
     distinct_auto_play_turns = sorted(set(auto_play_turns))
     if len(distinct_auto_play_turns) < 2:
         failures.append(f"auto-play was not observed on two turns: {distinct_auto_play_turns}")
+    if not set(distinct_auto_play_turns).issubset(distinct_turns):
+        failures.append(
+            f"auto-play turns were not covered by auto-phase turns: phases={distinct_turns}, plays={distinct_auto_play_turns}"
+        )
+    final_matches = re.findall(r"\[VakuuHarness\] FINAL (.+)", text)
+    if not final_matches:
+        failures.append("FINAL result line was not found")
+    else:
+        final = final_matches[-1]
+        present = re.search(r"thirdActVakuuPresent=(True|False)", final)
+        if present is None:
+            failures.append(f"act 3 ancient result was not recorded: {final}")
+        auto_play_count = re.search(r"firstCombatAutoPlayCount=(\d+)", final)
+        if auto_play_count is None or int(auto_play_count.group(1)) < 2:
+            failures.append(f"first combat auto-play count was too low: {final}")
     missing_relics = [relic_id for relic_id in VAKUU_RELIC_IDS if relic_id not in text]
     if missing_relics:
         failures.append(f"missing Vakuu relics: {missing_relics}")

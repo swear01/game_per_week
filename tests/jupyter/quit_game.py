@@ -51,6 +51,9 @@ def request_graceful_quit(pids: list[int]) -> None:
         except subprocess.CalledProcessError as error:
             last_error = error
             time.sleep(1)
+            active = [pid for pid in active if pid in game_pids()]
+            if not active:
+                return
             continue
 
         if wait_for_game_exit(active):
@@ -61,7 +64,7 @@ def request_graceful_quit(pids: list[int]) -> None:
 
     detail = f"; last helper error: {last_error}" if last_error else ""
     raise RuntimeError(
-        f"Slay the Spire 2 did not exit gracefully after two 30-second waits; refusing forced termination{detail}"
+        f"Slay the Spire 2 did not exit gracefully after two termination attempts; refusing forced termination{detail}"
     )
 
 

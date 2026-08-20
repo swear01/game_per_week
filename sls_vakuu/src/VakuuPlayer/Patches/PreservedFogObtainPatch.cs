@@ -17,7 +17,7 @@ internal static class PreservedFogObtainPatch
 
         if (failure != null)
         {
-            GD.Print($"[VakuuPlayer] Preserved Fog startup deferral failed: {failure.Message}");
+            GD.PrintErr($"[VakuuPlayer] Preserved Fog startup deferral failed: {failure}");
         }
         __result = failure == null ? Task.CompletedTask : Task.FromException(failure);
         return false;
