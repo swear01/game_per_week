@@ -68,6 +68,7 @@ public sealed class VakuuContract : RelicModel
         catch (Exception e)
         {
             GD.PrintErr($"[VakuuPlayer] deferred Preserved Fog apply failed: {e}");
+            throw;
         }
     }
 

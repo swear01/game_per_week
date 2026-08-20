@@ -1,26 +1,26 @@
 from __future__ import annotations
 
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from quit_game import compile_quit_helper, game_pids, request_graceful_quit
+from quit_game import QUIT_SOURCE, compile_quit_helper, game_pids, request_graceful_quit
 
 
 class GameShutdownTests(unittest.TestCase):
-    @patch("quit_game.QUIT_SOURCE", Path("tests/jupyter/quit_game.swift"))
-    @patch("quit_game.QUIT_BINARY", Path("/tmp/vakuu-test-quit-helper"))
-    @patch("quit_game.subprocess.run")
-    def test_compiles_quit_helper_with_timeout(self, run):
-        compile_quit_helper()
+    def test_compiles_quit_helper_with_timeout(self):
+        with tempfile.TemporaryDirectory(prefix="vakuu-test-quit-") as directory:
+            binary = Path(directory) / "vakuu-quit-helper"
+            with patch("quit_game.QUIT_BINARY", binary), patch("quit_game.subprocess.run") as run:
+                compile_quit_helper()
 
-        run.assert_called_once_with(
-            ["swiftc", "tests/jupyter/quit_game.swift", "-o", "/tmp/vakuu-test-quit-helper"],
-            check=True,
-            timeout=120,
-        )
-        Path("/tmp/vakuu-test-quit-helper").unlink(missing_ok=True)
+            run.assert_called_once_with(
+                ["swiftc", str(QUIT_SOURCE), "-o", str(binary)],
+                check=True,
+                timeout=120,
+            )
 
     @patch("quit_game.subprocess.check_output")
     def test_only_matches_the_game_executable(self, check_output):

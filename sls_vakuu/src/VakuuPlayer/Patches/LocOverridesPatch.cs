@@ -3,6 +3,8 @@ using System.Linq;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Models;
+using VakuuPlayer.Relics;
 
 namespace VakuuPlayer.Patches;
 
@@ -15,7 +17,9 @@ namespace VakuuPlayer.Patches;
 [HarmonyPatch(typeof(LocManager), "LoadTablesFromPath")]
 public static class LocOverridesPatch
 {
-    private const string VakuuContractLocPrefix = "VAKUU_CONTRACT";
+    private const string EnglishLanguage = "eng";
+    private const string SimplifiedChineseLanguage = "zhs";
+    private const string TraditionalChineseLanguage = "zht";
 
     private static void Postfix(string language, ref (Dictionary<string, LocTable> tables, bool allowOverride, List<LocValidationError> errors) __result)
     {
@@ -72,18 +76,19 @@ public static class LocOverridesPatch
 
     private static void ApplyVakuuContractLoc(LocTable table, string language)
     {
-        var keyPrefix = VakuuContractLocPrefix;
-        if (language is not ("eng" or "zhs" or "zht"))
+        var keyPrefix = ModelDb.GetId<VakuuContract>().Entry;
+        var hasTranslation = language is EnglishLanguage or SimplifiedChineseLanguage or TraditionalChineseLanguage;
+        if (!hasTranslation)
         {
             FileLog.Log($"VakuuPlayer: no VakuuContract translation for {language}; using English fallback");
         }
         var (title, description, flavor) = language switch
         {
-            "zht" => (
+            TraditionalChineseLanguage => (
                 "瓦庫契約",
                 "每回合開始時，獲得 {Energy:energyIcons()}。[red]瓦庫會替你進行每一個回合。[/red]",
                 "把你自己交給我，你就能變得和我一樣萬眾畏懼。"),
-            "zhs" => (
+            SimplifiedChineseLanguage => (
                 "瓦库契约",
                 "在每个回合开始时，获得{Energy:energyIcons()}。[red]瓦库将接管你的每个回合。[/red]",
                 "把你自己交给我，你就能变得和我一样令人畏惧。"),
@@ -98,7 +103,7 @@ public static class LocOverridesPatch
             [$"{keyPrefix}.description"] = description,
             [$"{keyPrefix}.flavor"] = flavor,
         };
-        var entriesToMerge = language is "eng" or "zhs" or "zht"
+        var entriesToMerge = hasTranslation
             ? overrides
             : overrides
                 .Where(entry => !table.HasEntry(entry.Key))

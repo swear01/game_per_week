@@ -13,7 +13,7 @@ QUIT_BINARY = Path(__file__).with_name("artifacts") / "vakuu-quit-game"
 
 def game_pids() -> list[int]:
     output = subprocess.check_output(
-        ["ps", "-axo", "pid=,command="], text=True, timeout=10
+        ["ps", "-axo", "pid=,comm="], text=True, timeout=10
     )
     pids = []
     for line in output.splitlines():

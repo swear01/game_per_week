@@ -28,6 +28,7 @@ public static class Harness
     private const int WarmupFrames = 600;
     private const int HeartbeatInterval = 120;
     private const int EventOptionDelayFrames = 180;
+    private const int StartingRelicWaitFrames = 600;
     private const int CombatWaitFrames = 360;
     private const int WinWaitFrames = 240;
     private const int ActWaitFrames = 240;
@@ -49,8 +50,11 @@ public static class Harness
     private static bool _started;
     private static bool _selectionConfirmed;
     private static bool _optionChosen;
+    private static EventModel? _pendingEventModel;
     private static Task? _optionTask;
+    private static Task? _proceedTask;
     private static bool _startingRelicsLogged;
+    private static int _startingRelicWaitFrames;
     private static string? _lastStartingRelicSignature;
     private static bool _needFight;
     private static bool _fightCommandSent;
@@ -134,11 +138,20 @@ public static class Harness
 
     private static void RunAutoPrePlayPrefix()
     {
-        if (_fightCommandSent && !_winCommandSent)
+        if (!_fightCommandSent || _winCommandSent)
+        {
+            return;
+        }
+
+        try
         {
             var turn = CurrentCombatTurn();
             AutoPhaseTurns.Add(turn);
             GD.Print($"[VakuuHarness] auto-phase turn={turn} fightSent={_fightCommandSent}");
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"[VakuuHarness] could not record auto-phase: {e}");
         }
     }
 
@@ -151,6 +164,11 @@ public static class Harness
     {
         if (_fightCommandSent && !_winCommandSent)
         {
+            if (card == null)
+            {
+                GD.PrintErr("[VakuuHarness] AutoPlay received a null card in prefix");
+                return;
+            }
             GD.Print($"[VakuuHarness] AutoPlay entered card={card.Id.Entry}");
         }
     }
@@ -159,6 +177,12 @@ public static class Harness
     {
         if (!_fightCommandSent || _winCommandSent)
         {
+            return;
+        }
+
+        if (card == null)
+        {
+            GD.PrintErr("[VakuuHarness] AutoPlay received a null card in postfix");
             return;
         }
 
@@ -205,8 +229,17 @@ public static class Harness
                     var eventModel = eventRoom == null
                         ? null
                         : typeof(NEventRoom).GetField("_event", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(eventRoom) as EventModel;
-                    if (eventModel?.Id.Entry == "VAKUU" && eventModel.CurrentOptions.Count == 1)
+                    if (eventModel?.Id.Entry == "VAKUU")
                     {
+                        if (eventModel.CurrentOptions.Count != 1)
+                        {
+                            if (++_optionDelay >= EventOptionDelayFrames)
+                            {
+                                Fail($"Vakuu event expected one option, found {eventModel.CurrentOptions.Count}");
+                            }
+                            return;
+                        }
+
                         if (++_optionDelay < EventOptionDelayFrames)
                         {
                             return;
@@ -218,6 +251,7 @@ public static class Harness
                         }
 
                         _optionChosen = true;
+                        _pendingEventModel = eventModel;
                         GD.Print($"[VakuuHarness] choosing Accept; relics before={eventModel.Owner.Relics.Count}");
                         _optionTask = ChooseOptionAsync(eventModel);
                         return;
@@ -234,9 +268,35 @@ public static class Harness
                     _optionTask = null;
                 }
 
+                if (_optionChosen && !_needFight)
+                {
+                    if (_proceedTask == null)
+                    {
+                        var owner = _pendingEventModel?.Owner
+                            ?? throw new InvalidOperationException("Vakuu event owner was lost before proceeding.");
+                        GD.Print($"[VakuuHarness] Accept complete; relics={owner.Relics.Count} ids={string.Join(",", owner.Relics.Select(r => r.Id.Entry))}");
+                        _proceedTask = NEventRoom.Proceed();
+                        return;
+                    }
+
+                    if (!TaskCompleted(_proceedTask, "event proceed"))
+                    {
+                        return;
+                    }
+
+                    _proceedTask = null;
+                    _pendingEventModel = null;
+                    _needFight = true;
+                }
+
                 if (!_startingRelicsLogged)
                 {
                     _startingRelicsLogged = LogStartingRelics();
+                    if (!_startingRelicsLogged && ++_startingRelicWaitFrames >= StartingRelicWaitFrames)
+                    {
+                        Fail("expected Vakuu relics were not all acquired");
+                        return;
+                    }
                 }
 
                 if (_needFight && !_fightCommandSent)
@@ -248,6 +308,7 @@ public static class Harness
                             return;
                         }
 
+                        GD.Print("[VakuuHarness] actual map travel complete");
                         _travelTask = null;
                         _fightCommandSent = true;
                         return;
@@ -365,7 +426,7 @@ public static class Harness
                     }
 
                     _winFrames++;
-                    if (_winFrames < WinWaitFrames || CombatManager.Instance.IsInProgress)
+                    if (_winFrames < WinWaitFrames || CombatManager.Instance?.IsInProgress == true)
                     {
                         return;
                     }
@@ -441,8 +502,9 @@ public static class Harness
                 _openedCharacterSelect = true;
                 GD.Print("[VakuuHarness] opening character select");
                 var openCharacter = singleplayer.GetType().GetMethod(
-                    "OpenCharacterSelect", BindingFlags.Instance | BindingFlags.NonPublic);
-                openCharacter?.Invoke(singleplayer, new object?[] { null });
+                    "OpenCharacterSelect", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new MissingMethodException(singleplayer.GetType().FullName, "OpenCharacterSelect");
+                openCharacter.Invoke(singleplayer, new object?[] { null });
                 _frames = 0;
                 return;
             }
@@ -483,35 +545,17 @@ public static class Harness
 
     private static async Task ChooseOptionAsync(EventModel eventModel)
     {
-        try
+        if (eventModel.Owner == null)
         {
-            if (eventModel.Owner == null)
-            {
-                throw new InvalidOperationException("Vakuu event has no owner.");
-            }
+            throw new InvalidOperationException("Vakuu event has no owner.");
+        }
 
-            await eventModel.CurrentOptions[0].Chosen();
-            GD.Print($"[VakuuHarness] Accept complete; relics={eventModel.Owner.Relics.Count} ids={string.Join(",", eventModel.Owner.Relics.Select(r => r.Id.Entry))}");
-            await NEventRoom.Proceed();
-            _needFight = true;
-        }
-        catch (Exception e)
-        {
-            Fail($"event continuation failed: {e}");
-        }
+        await eventModel.CurrentOptions[0].Chosen();
     }
 
-    private static async Task TravelAsync(NMapScreen map, MapCoord coord)
+    private static Task TravelAsync(NMapScreen map, MapCoord coord)
     {
-        try
-        {
-            await map.TravelToMapCoord(coord);
-            GD.Print($"[VakuuHarness] actual map travel complete coord={coord}");
-        }
-        catch (Exception e)
-        {
-            Fail($"actual map travel failed: {e}");
-        }
+        return map.TravelToMapCoord(coord);
     }
 
     private static bool StartCommand(string command)

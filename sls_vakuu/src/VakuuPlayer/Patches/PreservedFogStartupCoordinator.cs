@@ -20,10 +20,7 @@ namespace VakuuPlayer.Patches;
 
 internal static class PreservedFogStartupCoordinator
 {
-    // Matches PreservedFog.AfterObtained in STS2 v0.111.0: remove three cards and add Folly.
-    private const int RemoveCount = 3;
-
-    private sealed record PendingSelection(Player Owner, IReadOnlyList<CardModel> Cards);
+    private sealed record PendingSelection(Player Owner, IReadOnlyList<CardModel> Cards, int RemoveCount);
 
     private static readonly object PendingGate = new();
     private static PendingSelection? _pending;
@@ -47,6 +44,13 @@ internal static class PreservedFogStartupCoordinator
             return false;
         }
 
+        var removeCount = relic.DynamicVars.Cards.IntValue;
+        if (removeCount <= 0)
+        {
+            failure = new InvalidOperationException($"Preserved Fog removal count was invalid: {removeCount}.");
+            return true;
+        }
+
         var deckPile = PileTypeExtensions.GetPile(PileType.Deck, owner);
         if (deckPile == null)
         {
@@ -57,9 +61,9 @@ internal static class PreservedFogStartupCoordinator
         var cards = deckPile.Cards
             .Where(card => card.IsRemovable)
             .ToList();
-        if (cards.Count < RemoveCount)
+        if (cards.Count < removeCount)
         {
-            failure = new InvalidOperationException($"Preserved Fog found only {cards.Count} removable starting cards.");
+            failure = new InvalidOperationException($"Preserved Fog found only {cards.Count} removable starting cards; {removeCount} required.");
             return true;
         }
 
@@ -70,7 +74,7 @@ internal static class PreservedFogStartupCoordinator
             return true;
         }
 
-        var pending = new PendingSelection(owner, cards);
+        var pending = new PendingSelection(owner, cards, removeCount);
         PendingSelection? previous;
         lock (PendingGate)
         {
@@ -180,7 +184,7 @@ internal static class PreservedFogStartupCoordinator
             {
                 snapshotIndex.TryAdd(pending.Cards[index], index);
             }
-            var prefs = new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, RemoveCount);
+            var prefs = new CardSelectorPrefs(CardSelectorPrefs.RemoveSelectionPrompt, pending.RemoveCount);
             var selectionResult = await CardSelectCmd.FromDeckGeneric(
                 owner,
                 prefs,
@@ -198,13 +202,13 @@ internal static class PreservedFogStartupCoordinator
             }
 
             var selected = selectionResult.ToList();
-            if (selected.Count != RemoveCount)
+            if (selected.Count != pending.RemoveCount)
             {
-                throw new InvalidOperationException($"Preserved Fog selected {selected.Count} cards instead of {RemoveCount}.");
+                throw new InvalidOperationException($"Preserved Fog selected {selected.Count} cards instead of {pending.RemoveCount}.");
             }
 
             var selectedSet = new HashSet<CardModel>(selected, ReferenceEqualityComparer.Instance);
-            if (selectedSet.Count != RemoveCount)
+            if (selectedSet.Count != pending.RemoveCount)
             {
                 throw new InvalidOperationException("Preserved Fog selection contains duplicate card references.");
             }
@@ -254,11 +258,11 @@ internal static class PreservedFogStartupCoordinator
         }
         finally
         {
-            if (reopenMap && NRun.Instance != null && NMapScreen.Instance != null)
+            if (reopenMap && NRun.Instance != null && NMapScreen.Instance is { IsOpen: false } currentMap)
             {
                 try
                 {
-                    NMapScreen.Instance.Open(true);
+                    currentMap.Open(true);
                 }
                 catch (Exception e)
                 {

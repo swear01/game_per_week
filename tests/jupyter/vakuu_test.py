@@ -19,8 +19,6 @@ GAME_APP = Path.home() / "Library/Application Support/Steam/steamapps/common/Sla
 MOD_ROOT = GAME_APP / "Contents/MacOS/mods"
 LOG_PATH = Path.home() / "Library/Application Support/SlayTheSpire2/logs/godot.log"
 SAVE_ROOT = Path.home() / "Library/Application Support/SlayTheSpire2/steam"
-WINDOW_ID_SOURCE = REPO_ROOT / "tests/jupyter/window_id.swift"
-WINDOW_ID_BINARY = REPO_ROOT / "tests/jupyter/artifacts/vakuu-window-id"
 
 
 @dataclass
@@ -125,26 +123,11 @@ def launch(session: TestSession) -> None:
 
 def capture(session: TestSession, name: str) -> Path:
     path = session.screenshots_dir / name
-    if not WINDOW_ID_BINARY.exists() or WINDOW_ID_BINARY.stat().st_mtime < WINDOW_ID_SOURCE.stat().st_mtime:
-        run(["swiftc", str(WINDOW_ID_SOURCE), "-o", str(WINDOW_ID_BINARY)])
-
     path.unlink(missing_ok=True)
-    for attempt in range(5):
-        window_id = subprocess.check_output([str(WINDOW_ID_BINARY)], text=True).strip()
-        if not window_id.isdigit():
-            raise RuntimeError("Slay the Spire 2 window is not visible")
-        try:
-            run(["/usr/sbin/screencapture", "-x", "-l", window_id, str(path)])
-        except subprocess.CalledProcessError:
-            if attempt < 4:
-                time.sleep(2)
-                continue
-            raise
-        if not path.exists() or path.stat().st_size == 0:
-            raise RuntimeError(f"screenshot was not created: {path}")
-        return path
-
-    raise RuntimeError(f"screenshot was not created: {path}")
+    run(["/usr/sbin/screencapture", "-x", str(path)])
+    if not path.exists() or path.stat().st_size == 0:
+        raise RuntimeError(f"screenshot was not created: {path}")
+    return path
 
 
 def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | None = None, timeout: int = 600) -> None:
