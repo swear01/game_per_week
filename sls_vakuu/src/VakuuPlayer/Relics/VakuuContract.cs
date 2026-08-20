@@ -27,6 +27,7 @@ namespace VakuuPlayer.Relics;
 /// </summary>
 public sealed class VakuuContract : RelicModel
 {
+    public const int EnergyGain = 1;
     public const int MaxCardsToPlay = 13;
 
     public override RelicRarity Rarity => RelicRarity.Ancient;
@@ -43,7 +44,7 @@ public sealed class VakuuContract : RelicModel
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new EnergyVar(1)
+        new EnergyVar(EnergyGain)
     ];
 
     protected override IEnumerable<IHoverTip> ExtraHoverTips =>
@@ -53,7 +54,13 @@ public sealed class VakuuContract : RelicModel
 
     public override async Task AfterActEntered()
     {
-        await PreservedFogStartupCoordinator.ApplyPendingAsync(Owner);
+        var owner = Owner;
+        if (owner == null)
+        {
+            return;
+        }
+
+        await PreservedFogStartupCoordinator.ApplyPendingAsync(owner);
     }
 
     public override async Task AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext choiceContext, Player player)
@@ -85,7 +92,7 @@ public sealed class VakuuContract : RelicModel
         while (cardsPlayed < MaxCardsToPlay
                && !CombatManager.Instance.IsOverOrEnding
                && !CombatManager.Instance.IsPlayerReadyToEndTurn(player)
-               && playerCombatState.TurnNumber == startTurn)
+               && owner.PlayerCombatState?.TurnNumber == startTurn)
         {
             var handPile = PileTypeExtensions.GetPile(PileType.Hand, owner);
             if (handPile == null)

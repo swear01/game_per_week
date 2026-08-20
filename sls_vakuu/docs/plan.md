@@ -19,8 +19,9 @@
 - 已通過：10 件 Vakuu 遺物全部存在；實機總遺物為 11 件，另包含 Ironclad 原生 `BurningBlood`，本輪沒有移除角色原生遺物。
 - 已通過：`auto_phase_turns=[1, 2]`、`auto_play_turns=[1, 2]`、自動出牌 9 張；第一回合結束指令成功送出，證明自動階段後控制權可回到玩家。
 - 已產生並提交 5 張遊戲視窗截圖至 `assets/screenshots/`。
-- 尚未完成：五角色存檔／讀檔回歸與 Workshop 上傳。
-- 觀察：第三幕 `Glory.AllAncients` 目前仍包含原生 Vakuu；本輪未把第三幕排除列為通過條件。
+- 尚未完成：五角色存檔／讀檔回歸。
+- 已通過：第三幕 `Glory.AllAncients` 仍包含原生 Vakuu；Jupyter validator 已將 `thirdActVakuuPresent=True` 列為回歸條件。
+- 已完成：Workshop 3784362897 更新至 v0.1.7，並使用 `english`／`schinese`／`tchinese` 分語言 metadata。
 
 ## Verification Gate
 - 一次性 harness 已驗證 `AfterActEntered` 內原生 `NDeckCardSelectScreen` 顯示並完成選擇；正式 mod 不保留 harness、不使用 `CardSelectCmd.UseSelector` 自動選牌。

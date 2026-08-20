@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Godot;
 using HarmonyLib;
@@ -25,6 +24,7 @@ internal static class PreservedFogStartupCoordinator
 
     private sealed record PendingSelection(Player Owner, IReadOnlyList<CardModel> Cards);
 
+    private static readonly object PendingGate = new();
     private static PendingSelection? _pending;
 
     public static bool TryDefer(PreservedFog relic, out Exception? failure)
@@ -57,13 +57,24 @@ internal static class PreservedFogStartupCoordinator
             return true;
         }
 
-        var pending = new PendingSelection(owner, cards);
-        var previous = Interlocked.Exchange(ref _pending, pending);
-        if (previous != null && ReferenceEquals(previous.Owner, owner))
+        var seenCards = new HashSet<CardModel>(ReferenceEqualityComparer.Instance);
+        if (cards.Any(card => !seenCards.Add(card)))
         {
-            Interlocked.CompareExchange(ref _pending, previous, pending);
-            failure = new InvalidOperationException("Preserved Fog startup selection was deferred more than once for the same run.");
+            failure = new InvalidOperationException("Preserved Fog starting deck contains duplicate card references.");
             return true;
+        }
+
+        var pending = new PendingSelection(owner, cards);
+        PendingSelection? previous;
+        lock (PendingGate)
+        {
+            previous = _pending;
+            if (previous != null && ReferenceEquals(previous.Owner, owner))
+            {
+                failure = new InvalidOperationException("Preserved Fog startup selection was deferred more than once for the same run.");
+                return true;
+            }
+            _pending = pending;
         }
         if (previous != null)
         {
@@ -75,12 +86,21 @@ internal static class PreservedFogStartupCoordinator
 
     private static void ClearPending(PendingSelection pending)
     {
-        Interlocked.CompareExchange(ref _pending, null, pending);
+        lock (PendingGate)
+        {
+            if (ReferenceEquals(_pending, pending))
+            {
+                _pending = null;
+            }
+        }
     }
 
     private static void ClearPending()
     {
-        Interlocked.Exchange(ref _pending, null);
+        lock (PendingGate)
+        {
+            _pending = null;
+        }
     }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.OnEnded))]
@@ -91,14 +111,18 @@ internal static class PreservedFogStartupCoordinator
 
     public static async Task ApplyPendingAsync(Player owner)
     {
-        var pending = Volatile.Read(ref _pending);
+        PendingSelection? pending;
+        lock (PendingGate)
+        {
+            pending = _pending;
+        }
         if (pending == null)
         {
             return;
         }
         if (!ReferenceEquals(pending.Owner, owner))
         {
-            Interlocked.CompareExchange(ref _pending, null, pending);
+            ClearPending(pending);
             return;
         }
         if (NRun.Instance == null)
@@ -125,9 +149,13 @@ internal static class PreservedFogStartupCoordinator
             throw new InvalidOperationException($"Preserved Fog snapshot cards are no longer removable: {string.Join(", ", unavailable)}");
         }
 
-        if (Interlocked.CompareExchange(ref _pending, null, pending) != pending)
+        lock (PendingGate)
         {
-            return;
+            if (!ReferenceEquals(_pending, pending))
+            {
+                return;
+            }
+            _pending = null;
         }
 
         var map = NMapScreen.Instance;
@@ -152,6 +180,11 @@ internal static class PreservedFogStartupCoordinator
                 prefs,
                 card => card.IsRemovable && snapshotIndex.ContainsKey(card),
                 card => snapshotIndex.TryGetValue(card, out var index) ? index : int.MaxValue);
+            if (NRun.Instance == null)
+            {
+                GD.PrintErr("[VakuuPlayer] Preserved Fog selection ended after the run was closed; skipping deck mutation.");
+                return;
+            }
             if (selectionResult == null)
             {
                 throw new InvalidOperationException("Preserved Fog card selection returned null.");
@@ -163,11 +196,32 @@ internal static class PreservedFogStartupCoordinator
                 throw new InvalidOperationException($"Preserved Fog selected {selected.Count} cards instead of {RemoveCount}.");
             }
 
+            var selectedSet = new HashSet<CardModel>(selected, ReferenceEqualityComparer.Instance);
+            if (selectedSet.Count != RemoveCount)
+            {
+                throw new InvalidOperationException("Preserved Fog selection contains duplicate card references.");
+            }
+            var currentDeck = PileTypeExtensions.GetPile(PileType.Deck, owner);
+            if (currentDeck == null || selected.Any(card => !card.IsRemovable || !currentDeck.Cards.Contains(card, ReferenceEqualityComparer.Instance)))
+            {
+                throw new InvalidOperationException("Preserved Fog selection cards are no longer available in the deck.");
+            }
+
             foreach (var card in selected)
             {
+                if (NRun.Instance == null)
+                {
+                    GD.PrintErr("[VakuuPlayer] Preserved Fog run ended during deck mutation; stopping safely.");
+                    return;
+                }
                 await CardPileCmd.RemoveFromDeck(card, true);
             }
 
+            if (NRun.Instance == null)
+            {
+                GD.PrintErr("[VakuuPlayer] Preserved Fog run ended before adding Folly; stopping safely.");
+                return;
+            }
             await CardPileCmd.AddCurseToDeck<Folly>(owner);
             GD.Print($"[VakuuPlayer] Preserved Fog removed cards: {string.Join(", ", selected.Select(c => c.Id.Entry))}");
         }

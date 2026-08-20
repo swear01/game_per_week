@@ -33,8 +33,8 @@ class VakuuRunValidationTests(unittest.TestCase):
         self.assertEqual(validate_log(path)["auto_play_count"], 2)
         path.unlink()
 
-    def test_rejects_missing_act_three_result(self):
-        path = self.write_log("firstCombatAutoPlayCount=2 distinctAutoPlayTurns=1,2")
+    def test_rejects_vakuu_missing_from_act_three_ancients(self):
+        path = self.write_log("firstCombatAutoPlayCount=2 distinctAutoPlayTurns=1,2 thirdActVakuuPresent=False")
         with self.assertRaises(AssertionError):
             validate_log(path)
         path.unlink()

@@ -55,8 +55,8 @@ def validate_log(path: str | Path) -> dict[str, object]:
     else:
         final = final_matches[-1]
         present = re.search(r"thirdActVakuuPresent=(True|False)", final)
-        if present is None:
-            failures.append(f"act 3 ancient result was not recorded: {final}")
+        if present is None or present.group(1) != "True":
+            failures.append(f"Vakuu was missing from act 3 ancients: {final}")
         auto_play_count = re.search(r"firstCombatAutoPlayCount=(\d+)", final)
         if auto_play_count is None or int(auto_play_count.group(1)) < 2:
             failures.append(f"first combat auto-play count was too low: {final}")
