@@ -11,8 +11,7 @@ class VakuuRunValidationTests(unittest.TestCase):
     def write_log(self, final: str) -> Path:
         lines = [
             "[VakuuHarness] attached",
-            "[VakuuPlayer] VakuuContract localization ready language=eng",
-            "[VakuuHarness] VakuuContract localization resolved title=Vakuu's Contract",
+            "[VakuuHarness] VakuuContract localization resolved title=Vakuu's Contract languages=eng,zhs,zht,deu",
             "[VakuuPlayer] opening deferred Preserved Fog selection",
             "[VakuuHarness] confirming first 3 snapshot cards",
             "[VakuuPlayer] Preserved Fog removed cards: STRIKE, DEFEND",

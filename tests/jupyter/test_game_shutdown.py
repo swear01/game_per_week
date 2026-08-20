@@ -27,9 +27,38 @@ class GameShutdownTests(unittest.TestCase):
         check_output.return_value = (
             "100 /bin/sh -c echo '/Slay the Spire 2'\n"
             "200 /Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2\n"
+            "201 /Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/helper\n"
         )
 
         self.assertEqual(game_pids(), [200])
+
+    def test_compiled_helper_rejects_invalid_and_non_game_processes(self):
+        helper = compile_quit_helper()
+        process_table = subprocess.check_output(["ps", "-axo", "pid=,comm="], text=True)
+        non_game_app_pid = next(
+            (
+                line.strip().split(maxsplit=1)[0]
+                for line in process_table.splitlines()
+                if ".app/Contents/MacOS/" in line
+            ),
+            None,
+        )
+        if non_game_app_pid is None:
+            self.skipTest("no running macOS application was available for identity rejection")
+
+        cases = [
+            (["not-a-pid"], "invalid process id"),
+            (["0"], "process not found"),
+            ([non_game_app_pid], "not a Slay the Spire 2 process"),
+        ]
+
+        for arguments, message in cases:
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(
+                    [helper, *arguments], capture_output=True, text=True, check=False
+                )
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(message, result.stderr)
 
     @patch("quit_game.wait_for_game_exit", return_value=True)
     @patch("quit_game.compile_quit_helper", return_value=Path("tests/jupyter/artifacts/vakuu-quit-game"))

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 
-GAME_PROCESS_MARKER = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/"
+GAME_EXECUTABLE_SUFFIX = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2"
 QUIT_SOURCE = Path(__file__).with_name("quit_game.swift")
 QUIT_BINARY = Path(__file__).with_name("artifacts") / "vakuu-quit-game"
 
@@ -18,7 +18,7 @@ def game_pids() -> list[int]:
     pids = []
     for line in output.splitlines():
         pid_text, _, command = line.strip().partition(" ")
-        if pid_text.isdigit() and GAME_PROCESS_MARKER in command:
+        if pid_text.isdigit() and command.rstrip().endswith(GAME_EXECUTABLE_SUFFIX):
             pids.append(int(pid_text))
     return pids
 

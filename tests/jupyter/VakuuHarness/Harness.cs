@@ -9,6 +9,7 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Hooks;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
@@ -647,18 +648,55 @@ public static class Harness
         }
 
         var contract = player.Relics.First(relic => relic.Id.Entry == "VAKUU_CONTRACT");
-        var title = contract.Title.GetRawText();
-        var description = contract.DynamicDescription.GetRawText();
-        var flavor = contract.Flavor.GetRawText();
-        if (string.IsNullOrWhiteSpace(title)
-            || string.IsNullOrWhiteSpace(description)
-            || string.IsNullOrWhiteSpace(flavor))
+        ValidateVakuuContractLocalization(contract);
+        return true;
+    }
+
+    private static void ValidateVakuuContractLocalization(RelicModel contract)
+    {
+        var originalLanguage = LocManager.Instance.Language;
+        var fallbackLanguage = LocManager.Languages.FirstOrDefault(
+            language => language is not ("eng" or "zhs" or "zht"));
+        if (fallbackLanguage == null)
         {
-            throw new InvalidOperationException("VakuuContract localization resolved an empty title, description, or flavor.");
+            throw new InvalidOperationException("No unsupported language was available to test the English localization fallback.");
         }
 
-        GD.Print($"[VakuuHarness] VakuuContract localization resolved title={title} description={description} flavor={flavor}");
-        return true;
+        var languages = new[] { "eng", "zhs", "zht", fallbackLanguage };
+        try
+        {
+            foreach (var language in languages)
+            {
+                LocManager.Instance.SetLanguage(language);
+                var title = contract.Title.GetRawText();
+                var description = contract.DynamicDescription.GetRawText();
+                var flavor = contract.Flavor.GetRawText();
+                var expectedTitle = language switch
+                {
+                    "zht" => "瓦庫契約",
+                    "zhs" => "瓦库契约",
+                    _ => "Vakuu's Contract",
+                };
+                if (title != expectedTitle
+                    || string.IsNullOrWhiteSpace(description)
+                    || string.IsNullOrWhiteSpace(flavor))
+                {
+                    throw new InvalidOperationException($"VakuuContract localization did not resolve for language {language}.");
+                }
+            }
+        }
+        finally
+        {
+            if (LocManager.Instance.Language != originalLanguage)
+            {
+                LocManager.Instance.SetLanguage(originalLanguage);
+            }
+        }
+
+        var titleAfterRestore = contract.Title.GetRawText();
+        var descriptionAfterRestore = contract.DynamicDescription.GetRawText();
+        var flavorAfterRestore = contract.Flavor.GetRawText();
+        GD.Print($"[VakuuHarness] VakuuContract localization resolved title={titleAfterRestore} description={descriptionAfterRestore} flavor={flavorAfterRestore} languages={string.Join(",", languages)}");
     }
 
     private static void LogCombatHand()

@@ -7,9 +7,8 @@ if arguments.isEmpty {
     exit(2)
 }
 
-// Keep this in sync with GAME_PROCESS_MARKER in quit_game.py.
-let gameExecutableMarker = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/"
-let gameExecutableName = "Slay the Spire 2"
+// Keep this suffix in sync with GAME_EXECUTABLE_SUFFIX in quit_game.py.
+let gameExecutableSuffix = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2"
 var found = false
 var failed = false
 for argument in arguments {
@@ -23,7 +22,7 @@ for argument in arguments {
         failed = true
         continue
     }
-    guard application.executableURL?.path.hasSuffix(gameExecutableMarker + gameExecutableName) == true else {
+    guard application.executableURL?.path.hasSuffix(gameExecutableSuffix) == true else {
         fputs("pid \(pidValue): not a Slay the Spire 2 process\n", stderr)
         failed = true
         continue

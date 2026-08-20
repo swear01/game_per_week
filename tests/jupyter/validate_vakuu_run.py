@@ -7,8 +7,8 @@ from pathlib import Path
 
 REQUIRED_MARKERS = (
     "[VakuuHarness] attached",
-    "[VakuuPlayer] VakuuContract localization ready language=",
     "[VakuuHarness] VakuuContract localization resolved title=",
+    "languages=eng,zhs,zht,",
     "[VakuuPlayer] opening deferred Preserved Fog selection",
     "[VakuuHarness] confirming first 3 snapshot cards",
     "[VakuuPlayer] Preserved Fog removed cards:",

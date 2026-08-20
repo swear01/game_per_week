@@ -30,7 +30,7 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 ## 驗證清單（每次迭代）
 
 1. **初始化**：`~/Library/Application Support/SlayTheSpire2/logs/godot.log` 搜 `VakuuPlayer`
-   - 期望：`Loading assembly DLL` → `Calling initializer` → `Finished mod initialization`，並有 `[VakuuPlayer] VakuuContract localization ready language=...`，無 VakuuPlayer ERROR
+   - 期望：`Loading assembly DLL` → `Calling initializer` → `Finished mod initialization`，並有 `[VakuuHarness] VakuuContract localization resolved ...`，無 VakuuPlayer ERROR
 2. **遊戲內**（用戶操作）：
    - 角色選擇：所有角色名顯示「瓦庫」
    - 開局對話：涅奧顯示、說瓦庫契約之語
