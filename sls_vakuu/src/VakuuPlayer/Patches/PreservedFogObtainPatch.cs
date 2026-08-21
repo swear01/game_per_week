@@ -10,16 +10,25 @@ internal static class PreservedFogObtainPatch
 {
     private static bool Prefix(PreservedFog __instance, ref Task __result)
     {
-        if (!PreservedFogStartupCoordinator.TryDefer(__instance, out var failure))
+        try
         {
-            return true;
-        }
+            if (!PreservedFogStartupCoordinator.TryDefer(__instance, out var failure))
+            {
+                return true;
+            }
 
-        if (failure != null)
-        {
-            GD.Print($"[VakuuPlayer] Preserved Fog startup deferral failed: {failure.Message}");
+            if (failure != null)
+            {
+                GD.PrintErr($"[VakuuPlayer] Preserved Fog startup deferral failed: {failure}");
+            }
+            __result = failure == null ? Task.CompletedTask : Task.FromException(failure);
+            return false;
         }
-        __result = failure == null ? Task.CompletedTask : Task.FromException(failure);
-        return false;
+        catch (Exception e)
+        {
+            GD.PrintErr($"[VakuuPlayer] Preserved Fog startup deferral threw: {e}");
+            __result = Task.FromException(e);
+            return false;
+        }
     }
 }

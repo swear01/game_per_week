@@ -6,6 +6,7 @@
 
 ```bash
 ./test.sh   # build → 複製到 MacOS/mods/VakuuPlayer → 重啟遊戲
+make test   # deck_merger + Jupyter static tests
 ```
 
 - 本地 mods 目錄（macOS）：`<遊戲>/SlayTheSpire2.app/Contents/MacOS/mods/<ModId>/`
@@ -32,7 +33,7 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 - `StartingRelicsPatch` 靜態覆蓋五個角色 getter；這只證明 patch 覆蓋，不等於五角色存檔／讀檔實機通過。
 - 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory`，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
 - 現有 harness 沒有五角色迴圈或 Save/Load 驗證；要完成這項仍需獨立測試 save 的實機回歸。本次遵守不啟動遊戲、不修改 settings/save，故保留為 blocker。
-- Workshop item `3784362897` 的首次建立／更新有 git history 證據；目前 HEAD workspace 是 manifest v0.1.6，deploy DLL 已以本次 Release build 重新整理，並以 IL dump 確認五個 starting-relic `Postfix` 存在。遠端是否已接收這個 exact payload 只能由 ModUploader／Workshop 查詢確認，本次不執行上傳。
+- Workshop item `3784362897` 的首次建立／更新有 git history 證據；本次整合 workspace manifest 為 v0.1.8，deploy DLL 已以本次 Release build 重新整理。遠端是否已接收這個 exact payload 需由 ModUploader 回傳 log 確認。
 
 ## 驗證清單（每次迭代）
 
@@ -48,7 +49,8 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 ## Opening Ancient 整合驗證
 
 - 靜態確認 `Overgrowth`／`Underdocks` 只提供 Vakuu，`Glory` 過濾 Vakuu，且五個角色的原生 starting relic getter 在角色頁預覽期間保留原生結果。
-- 實機仍須確認：第一幕 Ancient、四句台詞、單一 Accept、10 件遺物、Preserved Fog 原生手動選牌，以及第一場戰鬥的每回合自動出牌。
+- 使用者已手動確認：第一幕 Ancient、四句台詞、單一 Accept、10 件遺物、Preserved Fog 原生手動選牌，以及第一場戰鬥的每回合自動出牌。
+- 自動 Harness 的第二回合判定不作為本次阻擋條件；測試時序曾在完整 hook 結束前提前結束戰鬥，使用者手動驗證取代該段自動 replay。
 
 ## 遊戲內調試
 

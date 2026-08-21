@@ -17,10 +17,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT = REPO_ROOT / "sls_vakuu"
 GAME_APP = Path.home() / "Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app"
 MOD_ROOT = GAME_APP / "Contents/MacOS/mods"
+WINDOW_ID_SOURCE = Path(__file__).with_name("window_id.swift")
+WINDOW_ID_BINARY = Path(__file__).with_name("artifacts") / "vakuu-window-id"
 LOG_PATH = Path.home() / "Library/Application Support/SlayTheSpire2/logs/godot.log"
 SAVE_ROOT = Path.home() / "Library/Application Support/SlayTheSpire2/steam"
-WINDOW_ID_SOURCE = REPO_ROOT / "tests/jupyter/window_id.swift"
-WINDOW_ID_BINARY = Path("/private/tmp/vakuu-window-id")
 
 
 @dataclass
@@ -37,6 +37,17 @@ def run(command: list[str]) -> None:
     env = os.environ.copy()
     env["PATH"] = f"{Path.home() / '.dotnet'}:{env.get('PATH', '')}"
     subprocess.run(command, cwd=ROOT, check=True, env=env)
+
+
+def compile_window_id_helper() -> Path:
+    WINDOW_ID_BINARY.parent.mkdir(parents=True, exist_ok=True)
+    if not WINDOW_ID_BINARY.exists() or WINDOW_ID_BINARY.stat().st_mtime < WINDOW_ID_SOURCE.stat().st_mtime:
+        subprocess.run(
+            ["swiftc", str(WINDOW_ID_SOURCE), "-o", str(WINDOW_ID_BINARY)],
+            check=True,
+            timeout=120,
+        )
+    return WINDOW_ID_BINARY
 
 
 def settings_path() -> Path:
@@ -99,6 +110,13 @@ def deploy_and_enable(session: TestSession) -> None:
             seen.add(key)
     for mod_id, source in sorted(wanted - seen):
         mod_list.append({"id": mod_id, "is_enabled": True, "source": source})
+
+    indexes = {entry.get("id"): index for index, entry in enumerate(mod_list)}
+    vakuu_index = indexes.get("VakuuPlayer")
+    harness_index = indexes.get("VakuuHarness")
+    if vakuu_index is not None and harness_index is not None and vakuu_index > harness_index:
+        mod_list[vakuu_index], mod_list[harness_index] = mod_list[harness_index], mod_list[vakuu_index]
+
     session.settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
@@ -118,23 +136,36 @@ def launch(session: TestSession) -> None:
 
 def capture(session: TestSession, name: str) -> Path:
     path = session.screenshots_dir / name
-    if not WINDOW_ID_BINARY.exists() or WINDOW_ID_BINARY.stat().st_mtime < WINDOW_ID_SOURCE.stat().st_mtime:
-        run(["swiftc", str(WINDOW_ID_SOURCE), "-o", str(WINDOW_ID_BINARY)])
-    window_id = subprocess.check_output([str(WINDOW_ID_BINARY)], text=True).strip()
+    path.unlink(missing_ok=True)
+    window_id = subprocess.check_output(
+        [compile_window_id_helper()], text=True, timeout=30
+    ).strip()
     if not window_id.isdigit():
-        raise RuntimeError("Slay the Spire 2 window is not visible")
+        raise RuntimeError(f"window helper returned invalid window id: {window_id!r}")
     run(["/usr/sbin/screencapture", "-x", "-l", window_id, str(path)])
     if not path.exists() or path.stat().st_size == 0:
         raise RuntimeError(f"screenshot was not created: {path}")
     return path
 
 
-def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | None = None, timeout: int = 600) -> None:
+def wait_for_marker(
+    session: TestSession,
+    marker: str,
+    screenshot_name: str | None = None,
+    timeout: int = 600,
+    screenshot_delay: float = 0,
+) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         text = LOG_PATH.read_text(encoding="utf-8", errors="replace") if LOG_PATH.exists() else ""
+        failure_marker = "[VakuuHarness] failed:"
+        if failure_marker in text:
+            tail = text[-4000:]
+            raise RuntimeError(f"harness reported failure while waiting for {marker!r}\n{tail}")
         if marker in text:
             if screenshot_name is not None:
+                if screenshot_delay > 0:
+                    time.sleep(screenshot_delay)
                 capture(session, screenshot_name)
             return
         time.sleep(2)
@@ -143,6 +174,12 @@ def wait_for_marker(session: TestSession, marker: str, screenshot_name: str | No
 
 
 def finish(session: TestSession) -> dict[str, object]:
+    wait_for_marker(
+        session,
+        "[VakuuHarness] Neow dialogue visible",
+        "06-neow-vakuu.png",
+        screenshot_delay=3,
+    )
     wait_for_marker(session, "[VakuuHarness] FINAL ", "05-final.png")
     shutil.copy2(LOG_PATH, session.artifacts_dir / "godot.log")
     return validate_log(session.artifacts_dir / "godot.log")

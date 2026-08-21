@@ -7,14 +7,34 @@ if arguments.isEmpty {
     exit(2)
 }
 
-var found = false
-var requested = false
+// Keep this suffix in sync with GAME_EXECUTABLE_SUFFIX in quit_game.py.
+let gameExecutableSuffix = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2"
+var failed = false
 for argument in arguments {
-    guard let pidValue = Int32(argument), let application = NSRunningApplication(processIdentifier: pid_t(pidValue)) else {
+    guard let pidValue = Int32(argument) else {
+        fputs("pid \(argument): invalid process id\n", stderr)
+        failed = true
         continue
     }
-    found = true
-    requested = application.terminate() || requested
+    guard let application = NSRunningApplication(processIdentifier: pid_t(pidValue)) else {
+        fputs("pid \(pidValue): process not found\n", stderr)
+        failed = true
+        continue
+    }
+    guard application.executableURL?.path.hasSuffix(gameExecutableSuffix) == true else {
+        fputs("pid \(pidValue): not a Slay the Spire 2 process\n", stderr)
+        failed = true
+        continue
+    }
+    guard !application.isTerminated else {
+        fputs("pid \(pidValue): process already exited\n", stderr)
+        failed = true
+        continue
+    }
+    if !application.terminate() {
+        fputs("pid \(pidValue): terminate request failed\n", stderr)
+        failed = true
+    }
 }
 
-exit(found && requested ? 0 : 1)
+exit(failed ? 1 : 0)

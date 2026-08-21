@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
@@ -9,6 +10,10 @@ namespace VakuuPlayer.Patches;
 [HarmonyPatch(typeof(LocManager), "LoadTablesFromPath")]
 public static class LocOverridesPatch
 {
+    private const string EnglishLanguage = "eng";
+    private const string SimplifiedChineseLanguage = "zhs";
+    private const string TraditionalChineseLanguage = "zht";
+
     private static void Postfix(string language, ref (Dictionary<string, LocTable> tables, bool allowOverride, List<LocValidationError> errors) __result)
     {
         if (__result.tables == null)
@@ -18,7 +23,7 @@ public static class LocOverridesPatch
 
         var text = language switch
         {
-            "zht" => (
+            TraditionalChineseLanguage => (
                 Line0: "醒來吧。你踏入這座尖塔，不是為了向涅奧乞求祝福。",
                 Line1: "你想要力量？我會把我的一切都給你——榮耀、詛咒，以及每一份代價。",
                 Line2: "你不必選擇。只有弱者才會在力量面前猶豫。",
@@ -29,7 +34,7 @@ public static class LocOverridesPatch
                 ContractTitle: "瓦庫契約",
                 ContractDescription: "每回合開始時，獲得 {Energy:energyIcons()}。[red]瓦庫會替你進行每一個回合。[/red]",
                 ContractFlavor: "把你自己交給我，你就能變得和我一樣萬眾畏懼。"),
-            "zhs" => (
+            SimplifiedChineseLanguage => (
                 Line0: "醒来吧。你踏入这座尖塔，不是为了向涅奥乞求祝福。",
                 Line1: "你想要力量？我会把我的一切都给你——荣耀、诅咒，以及每一份代价。",
                 Line2: "你不必选择。只有弱者才会在力量面前犹豫。",
@@ -82,8 +87,27 @@ public static class LocOverridesPatch
             ["VAKUU.talk.firstVisitEver.0-1.next"] = text.Next,
             ["VAKUU.talk.firstVisitEver.0-2.next"] = text.Next
         };
-
         table.MergeWith(overrides);
+        ApplyNeowOverrides(table);
         FileLog.Log($"VakuuPlayer: applied Vakuu opening localization ({overrides.Count} entries, lang={language})");
+    }
+
+    private static void ApplyNeowOverrides(LocTable table)
+    {
+        var overrides = new Dictionary<string, string>();
+        foreach (var neowKey in table.Keys.Where(k => k.StartsWith("NEOW.talk.")))
+        {
+            var vakuuKey = "VAKUU" + neowKey.Substring("NEOW".Length);
+            if (table.HasEntry(vakuuKey) && table.HasEntry(neowKey))
+            {
+                overrides[neowKey] = table.GetRawText(vakuuKey);
+            }
+        }
+
+        if (overrides.Count > 0)
+        {
+            table.MergeWith(overrides);
+            FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries)");
+        }
     }
 }

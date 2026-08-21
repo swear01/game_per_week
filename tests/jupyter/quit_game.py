@@ -6,24 +6,31 @@ import time
 from pathlib import Path
 
 
-GAME_PROCESS_MARKER = "/Slay the Spire 2"
+GAME_EXECUTABLE_SUFFIX = "/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2"
 QUIT_SOURCE = Path(__file__).with_name("quit_game.swift")
-QUIT_BINARY = Path("/private/tmp/vakuu-quit-game")
+QUIT_BINARY = Path(__file__).with_name("artifacts") / "vakuu-quit-game"
 
 
 def game_pids() -> list[int]:
-    output = subprocess.check_output(["ps", "-axo", "pid=,command="], text=True)
+    output = subprocess.check_output(
+        ["ps", "-axo", "pid=,comm="], text=True, timeout=10
+    )
     pids = []
     for line in output.splitlines():
         pid_text, _, command = line.strip().partition(" ")
-        if pid_text.isdigit() and GAME_PROCESS_MARKER in command:
+        if pid_text.isdigit() and command.rstrip().endswith(GAME_EXECUTABLE_SUFFIX):
             pids.append(int(pid_text))
     return pids
 
 
 def compile_quit_helper() -> Path:
+    QUIT_BINARY.parent.mkdir(parents=True, exist_ok=True)
     if not QUIT_BINARY.exists() or QUIT_BINARY.stat().st_mtime < QUIT_SOURCE.stat().st_mtime:
-        subprocess.run(["swiftc", str(QUIT_SOURCE), "-o", str(QUIT_BINARY)], check=True)
+        subprocess.run(
+            ["swiftc", str(QUIT_SOURCE), "-o", str(QUIT_BINARY)],
+            check=True,
+            timeout=120,
+        )
     return QUIT_BINARY
 
 
@@ -46,10 +53,15 @@ def request_graceful_quit(pids: list[int]) -> None:
     last_error: Exception | None = None
     for _ in range(2):
         try:
-            subprocess.run([helper, *(str(pid) for pid in active)], check=True)
-        except subprocess.CalledProcessError as error:
+            subprocess.run(
+                [helper, *(str(pid) for pid in active)], check=True, timeout=30
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
             last_error = error
             time.sleep(1)
+            active = [pid for pid in active if pid in game_pids()]
+            if not active:
+                return
             continue
 
         if wait_for_game_exit(active):
@@ -60,7 +72,7 @@ def request_graceful_quit(pids: list[int]) -> None:
 
     detail = f"; last helper error: {last_error}" if last_error else ""
     raise RuntimeError(
-        f"Slay the Spire 2 did not exit gracefully after two 30-second waits; refusing forced termination{detail}"
+        f"Slay the Spire 2 did not exit gracefully after two termination attempts; refusing forced termination{detail}"
     )
 
 

@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -27,6 +29,7 @@ namespace VakuuPlayer.Relics;
 /// </summary>
 public sealed class VakuuContract : RelicModel
 {
+    public const int EnergyGain = 1;
     public const int MaxCardsToPlay = 13;
 
     public override RelicRarity Rarity => RelicRarity.Ancient;
@@ -40,7 +43,7 @@ public sealed class VakuuContract : RelicModel
 
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new EnergyVar(1)
+        new EnergyVar(EnergyGain)
     ];
 
     protected override IEnumerable<IHoverTip> ExtraHoverTips =>
@@ -50,7 +53,22 @@ public sealed class VakuuContract : RelicModel
 
     public override async Task AfterActEntered()
     {
-        await PreservedFogStartupCoordinator.ApplyPendingAsync(Owner);
+        await base.AfterActEntered();
+        var owner = Owner;
+        if (owner == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await PreservedFogStartupCoordinator.ApplyPendingAsync(owner);
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"[VakuuPlayer] deferred Preserved Fog apply failed: {e}");
+            throw;
+        }
     }
 
     public override async Task AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext choiceContext, Player player)
@@ -62,8 +80,13 @@ public sealed class VakuuContract : RelicModel
         }
 
         var combatState = player.Creature.CombatState;
+        if (combatState == null)
+        {
+            return;
+        }
+
         var playerCombatState = owner.PlayerCombatState;
-        if (combatState == null || playerCombatState == null)
+        if (playerCombatState == null)
         {
             return;
         }
@@ -77,7 +100,7 @@ public sealed class VakuuContract : RelicModel
         while (cardsPlayed < MaxCardsToPlay
                && !CombatManager.Instance.IsOverOrEnding
                && !CombatManager.Instance.IsPlayerReadyToEndTurn(player)
-               && playerCombatState.TurnNumber == startTurn)
+               && owner.PlayerCombatState?.TurnNumber == startTurn)
         {
             var handPile = PileTypeExtensions.GetPile(PileType.Hand, owner);
             if (handPile == null)

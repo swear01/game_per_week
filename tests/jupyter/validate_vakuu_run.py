@@ -7,7 +7,12 @@ from pathlib import Path
 
 REQUIRED_MARKERS = (
     "[VakuuHarness] attached",
+    "[VakuuHarness] Neow dialogue visible",
+    "[VakuuHarness] VakuuContract localization resolved title=",
+    "languages=eng,zhs,zht,",
+    "[VakuuPlayer] opening deferred Preserved Fog selection",
     "[VakuuHarness] confirming first 3 snapshot cards",
+    "[VakuuPlayer] Preserved Fog removed cards:",
     "[VakuuHarness] starting Vakuu relics=10",
     "[VakuuHarness] first combat room entered",
     "[VakuuHarness] ending first player turn to test next turn",
@@ -45,6 +50,21 @@ def validate_log(path: str | Path) -> dict[str, object]:
     distinct_auto_play_turns = sorted(set(auto_play_turns))
     if len(distinct_auto_play_turns) < 2:
         failures.append(f"auto-play was not observed on two turns: {distinct_auto_play_turns}")
+    if not set(distinct_auto_play_turns).issubset(distinct_turns):
+        failures.append(
+            f"auto-play turns were not covered by auto-phase turns: phases={distinct_turns}, plays={distinct_auto_play_turns}"
+        )
+    final_matches = re.findall(r"\[VakuuHarness\] FINAL (.+)", text)
+    if not final_matches:
+        failures.append("FINAL result line was not found")
+    else:
+        final = final_matches[-1]
+        excluded = re.search(r"thirdActVakuuExcluded=(True|False)", final)
+        if excluded is None or excluded.group(1) != "True":
+            failures.append(f"Vakuu was present in act 3 ancients: {final}")
+        auto_play_count = re.search(r"firstCombatAutoPlayCount=(\d+)", final)
+        if auto_play_count is None or int(auto_play_count.group(1)) < 2:
+            failures.append(f"first combat auto-play count was too low: {final}")
     missing_relics = [relic_id for relic_id in VAKUU_RELIC_IDS if relic_id not in text]
     if missing_relics:
         failures.append(f"missing Vakuu relics: {missing_relics}")

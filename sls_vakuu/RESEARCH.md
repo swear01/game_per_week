@@ -81,11 +81,11 @@ BaseLib 提供更多配置/内容 API 和 mod 间冲突协调框架。
 
 | 工具 | 用途 | 本机状态 |
 | --- | --- | --- |
-| .NET 9 SDK | 编译 | ❌ 未安装（需 brew install dotnet-sdk） |
+| .NET 9 SDK | 编译 | ✅ 本机 `$HOME/.dotnet` |
 | C# 编辑器 / IDE | 写代码 | — |
 | ILSpy | 反编译 sts2.dll 查 API | 未装 |
 | Godot 4.5.x .NET | 做 .pck 资源 | 未装（做纯代码 mod 可跳过） |
-| ModUploader | 官方 Workshop 上传器（osx-arm64 zip 现成） | ❌ 未下载 |
+| ModUploader | 官方 Workshop 上传器 | ✅ `$HOME/.local/tools/moduploader/ModUploader` |
 | Steam Workshop | 已订阅 BaseLib + 20+ mod | ✅ 现成测试环境 |
 
 ## 7. 模板与参考
@@ -108,7 +108,7 @@ BaseLib 提供更多配置/内容 API 和 mod 间冲突协调框架。
 
 ## 9. 发布到 Steam Workshop（官方上传器）
 
-官方工具：**megacrit/sts2-mod-uploader**（最新 v0.2.0，本机可用 `ModUploader-osx-arm64.zip`，Steam 客户端需在运行）。Workshop 支持自 v0.107.1 起正式启用。
+官方工具：**megacrit/sts2-mod-uploader**（本机 ModUploader `1.0.0+4c4db1262cdce6a1c4550a494f2e1088dbeda346`，Steam 客户端需在运行）。Workshop 支持自 v0.107.1 起正式启用。
 
 ### 首次上传
 1. 运行 ModUploader → 生成 `NewModWorkspace/`

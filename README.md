@@ -2,6 +2,14 @@
 
 一週一遊戲／週更原型相關專案集合（單一 repo、多子專案）。
 
+## 統一驗證
+
+```bash
+make test
+```
+
+這會使用 `uv` 執行 `deck_merger` 的 pytest 測試，以及執行 `tests/jupyter/` 的 Python 單元測試；需要遊戲與 Steam 的實機整合測試仍依 `sls_vakuu/docs/testing.md` 操作。
+
 ## 子專案
 
 | 資料夾 | 說明 |
