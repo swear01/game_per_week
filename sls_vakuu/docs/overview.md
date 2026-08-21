@@ -1,7 +1,7 @@
 # Overview
 
 ## What This Is
-Slay the Spire 2 (殺戮尖塔 2) 自製 mod 的開發工作區（每週遊戲開發專案）。目前處於**研究 + 環境準備**階段：完整的 mod 開發研究筆記在 `RESEARCH.md`（權威來源），本 docs/ 記錄項目狀態與方向。
+Slay the Spire 2 (殺戮尖塔 2) 自製 mod 的開發工作區（每週遊戲開發專案）。目前已進入**第一幕 Vakuu 開局模式實作**：完整的 mod 開發研究筆記在 `RESEARCH.md`（權威來源），本 docs/ 記錄項目狀態與驗證方式。
 
 ## Key Concepts / Domain
 - **遊戲**: STS2 Early Access **v0.111.0**（commit 41cef1ea, 2026-08-13），macOS arm64 安裝

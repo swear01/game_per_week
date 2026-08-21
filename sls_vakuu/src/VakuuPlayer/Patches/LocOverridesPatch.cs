@@ -1,99 +1,89 @@
 using System.Collections.Generic;
-using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Models;
+using VakuuPlayer.Relics;
 
 namespace VakuuPlayer.Patches;
 
-/// <summary>
-/// 本地化覆蓋（表載入完成後套用，語言切換時自動重跑）：
-/// 1. ancients：涅奧（NEOW）保持顯示，台詞換成瓦庫的契約之語（值從 VAKUU.talk.* 複製）。
-/// 2. relics：瓦庫契約（VAKUU_CONTRACT）的 title/description/flavor（遊戲內沒有此 key）。
-/// 選角色頁面不改（角色名保持原樣）。
-/// </summary>
 [HarmonyPatch(typeof(LocManager), "LoadTablesFromPath")]
 public static class LocOverridesPatch
 {
-    private const string VakuuContractLocPrefix = "VAKUU_CONTRACT";
-
     private static void Postfix(string language, ref (Dictionary<string, LocTable> tables, bool allowOverride, List<LocValidationError> errors) __result)
     {
-        try
+        if (__result.tables == null)
         {
-            if (__result.tables == null)
-            {
-                return;
-            }
-
-            if (__result.tables.TryGetValue("ancients", out var ancients))
-            {
-                ApplyNeowOverrides(ancients, language);
-            }
-
-            if (__result.tables.TryGetValue("relics", out var relics))
-            {
-                ApplyVakuuContractLoc(relics, language);
-            }
-        }
-        catch (System.Exception e)
-        {
-            FileLog.Log($"VakuuPlayer: loc override failed: {e.Message}");
-        }
-    }
-
-    private static void ApplyNeowOverrides(LocTable table, string language)
-    {
-        var overrides = new Dictionary<string, string>();
-        foreach (var neowKey in table.Keys.Where(k => k.StartsWith("NEOW.talk.")))
-        {
-            var vakuuKey = "VAKUU" + neowKey.Substring("NEOW".Length);
-            if (table.HasEntry(vakuuKey) && table.HasEntry(neowKey))
-            {
-                overrides[neowKey] = table.GetRawText(vakuuKey);
-            }
+            return;
         }
 
-        if (overrides.Count > 0)
-        {
-            table.MergeWith(overrides);
-            FileLog.Log($"VakuuPlayer: Neow dialogue overridden with Vakuu's lines ({overrides.Count} entries, lang={language})");
-        }
-    }
-
-    private static void ApplyVakuuContractLoc(LocTable table, string language)
-    {
-        var keyPrefix = VakuuContractLocPrefix;
-        if (language is not ("eng" or "zhs" or "zht"))
-        {
-            FileLog.Log($"VakuuPlayer: no VakuuContract translation for {language}; using English fallback");
-        }
-        var (title, description, flavor) = language switch
+        var text = language switch
         {
             "zht" => (
-                "瓦庫契約",
-                "每回合開始 +1 能量。瓦庫接管你的每一回合：從左到右自動打牌，直到無牌可打、能量耗盡或打滿 13 張。",
-                "把你自己交給我，你就能變得和我一樣萬眾畏懼。"),
+                Line0: "醒來吧。你踏入這座尖塔，不是為了向涅奧乞求祝福。",
+                Line1: "你想要力量？我會把我的一切都給你——榮耀、詛咒，以及每一份代價。",
+                Line2: "你不必選擇。只有弱者才會在力量面前猶豫。",
+                Line3: "把自己交給我，你就能變得和我一樣，令眾生畏懼。",
+                OptionTitle: "接受",
+                OptionDescription: "接受瓦庫的全部遺物。力量、詛咒、代價——一件不留。",
+                Next: "繼續",
+                ContractTitle: "瓦庫契約",
+                ContractDescription: "每回合開始時，獲得 {Energy:energyIcons()}。[red]瓦庫會替你進行每一個回合。[/red]",
+                ContractFlavor: "把你自己交給我，你就能變得和我一樣萬眾畏懼。"),
             "zhs" => (
-                "瓦库契约",
-                "每回合开始 +1 能量。瓦库接管你的每一回合：从左到右自动出牌，直到无牌可打、能量耗尽或打满 13 张。",
-                "把你自己交给我，你就能变得和我一样令人畏惧。"),
+                Line0: "醒来吧。你踏入这座尖塔，不是为了向涅奥乞求祝福。",
+                Line1: "你想要力量？我会把我的一切都给你——荣耀、诅咒，以及每一份代价。",
+                Line2: "你不必选择。只有弱者才会在力量面前犹豫。",
+                Line3: "把自己交给我，你就能变得和我一样，令众生畏惧。",
+                OptionTitle: "接受",
+                OptionDescription: "接受瓦库的全部遗物。力量、诅咒、代价——一件不留。",
+                Next: "继续",
+                ContractTitle: "瓦库契约",
+                ContractDescription: "在每个回合开始时，获得{Energy:energyIcons()}。[red]瓦库将接管你的每个回合。[/red]",
+                ContractFlavor: "把你自己交给我，你就能变得和我一样令人畏惧。"),
             _ => (
-                "Vakuu's Contract",
-                "Gain 1 Energy at the start of each turn. Vakuu plays every turn for you: auto-plays cards left to right until no playable cards, no energy, or 13 cards played.",
-                "Give yourself to me and you will be feared as much as I."),
+                Line0: "Wake up. You did not enter this Spire to beg Neow for a blessing.",
+                Line1: "You want power. I will give you everything I have—glory, curses, and every cost.",
+                Line2: "You do not need to choose. Only the weak hesitate before power.",
+                Line3: "Give yourself to me, and you will be feared as much as I.",
+                OptionTitle: "Accept",
+                OptionDescription: "Accept everything Vakuu offers: every relic, every curse, and every cost.",
+                Next: "Continue",
+                ContractTitle: "Vakuu's Contract",
+                ContractDescription: "Gain {Energy:energyIcons()} at the start of each turn. [red]Vakuu plays every turn for you.[/red]",
+                ContractFlavor: "Give yourself to me and you will be feared as much as I.")
         };
+
+        if (__result.tables.TryGetValue("relics", out var relics))
+        {
+            var contractKey = ModelDb.GetId<VakuuContract>().Entry;
+            relics.MergeWith(new Dictionary<string, string>
+            {
+                [$"{contractKey}.title"] = text.ContractTitle,
+                [$"{contractKey}.description"] = text.ContractDescription,
+                [$"{contractKey}.flavor"] = text.ContractFlavor
+            });
+            FileLog.Log($"VakuuPlayer: applied VakuuContract localization (lang={language})");
+        }
+
+        if (!__result.tables.TryGetValue("ancients", out var table))
+        {
+            return;
+        }
+
         var overrides = new Dictionary<string, string>
         {
-            [$"{keyPrefix}.title"] = title,
-            [$"{keyPrefix}.description"] = description,
-            [$"{keyPrefix}.flavor"] = flavor,
+            [$"{VakuuEventPatch.AcceptOptionKey}.title"] = text.OptionTitle,
+            [$"{VakuuEventPatch.AcceptOptionKey}.description"] = text.OptionDescription,
+            ["VAKUU.talk.firstVisitEver.0-0.ancient"] = text.Line0,
+            ["VAKUU.talk.firstVisitEver.0-1.ancient"] = text.Line1,
+            ["VAKUU.talk.firstVisitEver.0-2.ancient"] = text.Line2,
+            ["VAKUU.talk.firstVisitEver.0-3.ancient"] = text.Line3,
+            ["VAKUU.talk.firstVisitEver.0-0.next"] = text.Next,
+            ["VAKUU.talk.firstVisitEver.0-1.next"] = text.Next,
+            ["VAKUU.talk.firstVisitEver.0-2.next"] = text.Next
         };
+
         table.MergeWith(overrides);
-        var missingKeys = overrides.Keys.Where(key => !table.HasEntry(key)).ToList();
-        if (missingKeys.Count > 0)
-        {
-            throw new InvalidOperationException($"VakuuContract localization keys were not added for {language}: {string.Join(", ", missingKeys)}");
-        }
-        FileLog.Log($"VakuuPlayer: VakuuContract localization added ({language})");
+        FileLog.Log($"VakuuPlayer: applied Vakuu opening localization ({overrides.Count} entries, lang={language})");
     }
 }

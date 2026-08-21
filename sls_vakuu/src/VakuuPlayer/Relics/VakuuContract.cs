@@ -31,10 +31,7 @@ public sealed class VakuuContract : RelicModel
 
     public override RelicRarity Rarity => RelicRarity.Ancient;
 
-    // 圖示借用低語耳環的資源（瓦庫契約是其替代品）
-    public override string PackedIconPath => "res://images/relics/whispering_earring.png";
-    protected override string PackedIconOutlinePath => "res://images/relics/whispering_earring.png";
-    protected override string BigIconPath => "res://images/relics/whispering_earring.png";
+    protected override string IconBaseName => "whispering_earring";
 
     public override decimal ModifyMaxEnergy(Player player, decimal amount)
     {
@@ -65,7 +62,8 @@ public sealed class VakuuContract : RelicModel
         }
 
         var combatState = player.Creature.CombatState;
-        if (combatState == null)
+        var playerCombatState = owner.PlayerCombatState;
+        if (combatState == null || playerCombatState == null)
         {
             return;
         }
@@ -73,12 +71,6 @@ public sealed class VakuuContract : RelicModel
         Flash();
 
         using var _ = CardSelectCmd.PushSelector(new VakuuCardSelector(), false);
-
-        var playerCombatState = owner.PlayerCombatState;
-        if (playerCombatState == null)
-        {
-            return;
-        }
 
         var cardsPlayed = 0;
         var startTurn = playerCombatState.TurnNumber;
@@ -99,7 +91,7 @@ public sealed class VakuuContract : RelicModel
                 break;
             }
 
-            var target = GetTarget(card, combatState);
+            var target = GetTarget(card, combatState, owner);
             await card.SpendResources();
             await CardCmd.AutoPlay(choiceContext, card, target, AutoPlayType.Default, true, false);
             cardsPlayed++;
@@ -117,17 +109,17 @@ public sealed class VakuuContract : RelicModel
     }
 
     /// <summary>選目標：敵人 = 最左邊；友方 = 隨機；自己 = 玩家。</summary>
-    private Creature? GetTarget(CardModel card, ICombatState combatState)
+    private Creature? GetTarget(CardModel card, ICombatState combatState, Player owner)
     {
-        var combatTargets = Owner.RunState.Rng.CombatTargets;
+        var combatTargets = owner.RunState.Rng.CombatTargets;
         switch (card.TargetType)
         {
             case TargetType.AnyEnemy:
                 return combatState.HittableEnemies.FirstOrDefault();
             case TargetType.AnyAlly:
-                return combatTargets.NextItem(combatState.Allies.Where(c => c != null && c.IsAlive && c.IsPlayer && c != Owner.Creature));
+                return combatTargets.NextItem(combatState.Allies.Where(c => c != null && c.IsAlive && c.IsPlayer && c != owner.Creature));
             case TargetType.AnyPlayer:
-                return Owner.Creature;
+                return owner.Creature;
             default:
                 return null;
         }

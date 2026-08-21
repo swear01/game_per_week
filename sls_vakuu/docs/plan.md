@@ -23,7 +23,8 @@
   - 五角色開局遺物覆蓋已靜態確認：`StartingRelicsPatch` 對 Ironclad、Silent、Defect、Regent、Necrobinder 都有精確 getter patch；deploy DLL 已用本次 Release build 重新整理，並以 IL dump 確認五個 nested `Postfix` 存在。
   - 五角色存檔／讀檔回歸仍未完成：既有 harness 只跑預設 Ironclad 新局，沒有逐角色 Save/Load marker；本次未啟動遊戲、未碰使用者 save，因此沒有把靜態結果當成實機通過。
   - Workshop「首次上傳」並非未完成：git history 的 `52f2f75`／`c6c442b` 已建立並更新 item `3784362897`。但目前 HEAD 的 deploy manifest 是 v0.1.6，無本地證據證明這個 exact payload 已上傳；本次不執行 ModUploader，待明確 release/upload 指示。
-- 觀察：第三幕 `Glory.AllAncients` 目前仍包含原生 Vakuu；本輪未把第三幕排除列為通過條件。
+- Opening Ancient integration（2026-08-21）：第一幕固定 Vakuu、第三幕過濾 Vakuu、單一 Accept 取得 10 件遺物、原生角色頁預覽與 VakuuContract 本地化已合併至 integration branch；尚未完成本次整合後的實機驗證。
+- 觀察：第三幕 `Glory.AllAncients` 已加入 Vakuu 過濾；舊存檔已生成的第三幕房間不會重新生成。
 
 ## Verification Gate
 - 一次性 harness 已驗證 `AfterActEntered` 內原生 `NDeckCardSelectScreen` 顯示並完成選擇；正式 mod 不保留 harness、不使用 `CardSelectCmd.UseSelector` 自動選牌。

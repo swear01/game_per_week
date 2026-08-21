@@ -1,47 +1,36 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Characters;
-using MegaCrit.Sts2.Core.Models.RelicPools;
 using MegaCrit.Sts2.Core.Models.Relics;
-using VakuuPlayer.Relics;
+using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 
 namespace VakuuPlayer.Patches;
 
-/// <summary>
-/// 所有角色開局遺物：低語耳環換成瓦庫契約（每回合接管），並追加其餘 9 件瓦庫遺物（含負面效果）。
-/// 注意：Harmony PatchAll 要求 [HarmonyPatch] 與 patch 方法同類 — 每個角色一個嵌套類。
-/// </summary>
+/// <summary>清空新局原生起始遺物；角色頁預覽仍顯示原生遺物。</summary>
 public static class StartingRelicsPatch
 {
-    private static readonly RelicModel[] VakuuRelics =
-    [
-        ModelDb.Relic<BloodSoakedRose>(),
-        ModelDb.Relic<Fiddle>(),
-        ModelDb.Relic<PreservedFog>(),
-        ModelDb.Relic<SereTalon>(),
-        ModelDb.Relic<DistinguishedCape>(),
-        ModelDb.Relic<ChoicesParadox>(),
-        ModelDb.Relic<MusicBox>(),
-        ModelDb.Relic<LordsParasol>(),
-        ModelDb.Relic<JeweledMask>(),
-        ModelDb.Relic<VakuuContract>(),
-    ];
+    private static bool _showCharacterSelectPreview;
 
-    private static void Apply(ref IReadOnlyList<RelicModel> __result)
+    private static void Apply(ref IReadOnlyList<RelicModel> result)
     {
-        if (__result == null)
+        if (_showCharacterSelectPreview)
         {
-            throw new InvalidOperationException("Character starting relics returned null.");
+            return;
         }
 
-        var list = __result
-            .Where(r => r.GetType() != typeof(WhisperingEarring)) // 低語耳環由瓦庫契約取代
-            .ToList();
-        list.AddRange(VakuuRelics);
-        __result = list;
+        result = Array.Empty<RelicModel>();
+    }
+
+    [HarmonyPatch(typeof(NCharacterSelectScreen), nameof(NCharacterSelectScreen.SelectCharacter))]
+    [HarmonyPriority(Priority.First)]
+    private static class CharacterSelectPreviewPatch
+    {
+        private static void Prefix() => _showCharacterSelectPreview = true;
+
+        private static void Finalizer() => _showCharacterSelectPreview = false;
     }
 
     [HarmonyPatch(typeof(Ironclad), nameof(CharacterModel.StartingRelics), MethodType.Getter)]

@@ -40,10 +40,15 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
    - 期望：`Loading assembly DLL` → `Calling initializer` → `Finished mod initialization`，無 ERROR
 2. **遊戲內**（用戶操作）：
    - 角色選擇：所有角色名顯示「瓦庫」
-   - 開局對話：涅奧顯示、說瓦庫契約之語
-   - 遺物欄：10 件瓦庫遺物（含負面效果）
+   - 第一幕開局顯示 Vakuu Ancient；首次對話有四句瓦庫契約台詞，只有一個「接受」選項
+   - 遺物欄：按下接受後取得 10 件瓦庫遺物（含負面效果）
    - 第一場戰鬥：確認第一回合、第二回合及後續每回合瓦庫都從左→右自動打牌（≤13 張），每次自動出牌完成後控制權回到玩家，才能使用藥水等操作
 3. **回歸**：遊戲更新後跑：載入偵測 → 新 run → 各內容類型 → hover/圖鑑 → 存檔讀檔 → 事件 → GUI
+
+## Opening Ancient 整合驗證
+
+- 靜態確認 `Overgrowth`／`Underdocks` 只提供 Vakuu，`Glory` 過濾 Vakuu，且五個角色的原生 starting relic getter 在角色頁預覽期間保留原生結果。
+- 實機仍須確認：第一幕 Ancient、四句台詞、單一 Accept、10 件遺物、Preserved Fog 原生手動選牌，以及第一場戰鬥的每回合自動出牌。
 
 ## 遊戲內調試
 
