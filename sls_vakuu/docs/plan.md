@@ -19,7 +19,10 @@
 - 已通過：10 件 Vakuu 遺物全部存在；實機總遺物為 11 件，另包含 Ironclad 原生 `BurningBlood`，本輪沒有移除角色原生遺物。
 - 已通過：`auto_phase_turns=[1, 2]`、`auto_play_turns=[1, 2]`、自動出牌 9 張；第一回合結束指令成功送出，證明自動階段後控制權可回到玩家。
 - 已產生並提交 5 張遊戲視窗截圖至 `assets/screenshots/`。
-- 尚未完成：五角色存檔／讀檔回歸與 Workshop 上傳。
+- Main-line audit（2026-08-21，基線 `c7a6568`）：
+  - 五角色開局遺物覆蓋已靜態確認：`StartingRelicsPatch` 對 Ironclad、Silent、Defect、Regent、Necrobinder 都有精確 getter patch；deploy DLL 已用本次 Release build 重新整理，並以 IL dump 確認五個 nested `Postfix` 存在。
+  - 五角色存檔／讀檔回歸仍未完成：既有 harness 只跑預設 Ironclad 新局，沒有逐角色 Save/Load marker；本次未啟動遊戲、未碰使用者 save，因此沒有把靜態結果當成實機通過。
+  - Workshop「首次上傳」並非未完成：git history 的 `52f2f75`／`c6c442b` 已建立並更新 item `3784362897`。但目前 HEAD 的 deploy manifest 是 v0.1.6，無本地證據證明這個 exact payload 已上傳；本次不執行 ModUploader，待明確 release/upload 指示。
 - 觀察：第三幕 `Glory.AllAncients` 目前仍包含原生 Vakuu；本輪未把第三幕排除列為通過條件。
 
 ## Verification Gate

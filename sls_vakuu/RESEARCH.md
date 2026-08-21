@@ -237,6 +237,13 @@ PreloadRunAssets
 
 不要用全域 `ShouldSelectLocalCard` patch：它不能建立 NRun/overlay，且會影響所有單人選牌。若 map 已在 `AfterActEntered` 時開啟，選牌協調器暫時關閉 map，完成後恢復。
 
+### 存檔／讀檔契約（v0.111.0，反編譯確認）
+
+- `StartingRelicsPatch` 只 patch 五個角色的 `CharacterModel.StartingRelics` getter：Ironclad、Silent、Defect、Regent、Necrobinder。
+- 新局 `Player.CreateForNewRun` 會走 `PopulateStartingInventory`，因此套用 starting relic getter；讀檔 `Player.FromSerializable` 則走 `LoadInventory`，直接由 `SerializablePlayer.Relics` 還原，不會再次呼叫 starting relic getter。
+- `Player.ToSerializable` 以 `RelicModel.ToSerializable` 保存每件遺物的 `Id`、`SavedProperties` 與 `FloorAddedToDeck`；`RelicModel.FromSerializable` 以 ID 取回可變模型並填回 properties。`VakuuContract` 沒有自訂存檔格式，沿用此契約。
+- 因此靜態 API 契約預期讀檔不會重複追加十件遺物；仍須用五角色的獨立實機存檔／讀檔回歸驗證 runtime 行為，不能用 source inspection 取代。
+
 ### STS2 自動化/輔助工具
 - **STS2 Modding MCP**（elliotttate/sts2-modding-mcp，153 tools）：反編譯、建置、部署、**live-inspect 運行中 Godot 引擎、自動 playtest**
 - **KitLib**（STS2-KitLib）：測試 run（含 seed）、左緣 dev panel 遊戲內編輯卡牌/狀態、log viewer、pseudo co-op（雙實例 LAN）、unlock all
