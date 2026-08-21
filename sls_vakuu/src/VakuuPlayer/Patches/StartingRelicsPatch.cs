@@ -14,23 +14,14 @@ public static class StartingRelicsPatch
 {
     private static bool _showCharacterSelectPreview;
 
-    private static void Apply(CharacterModel character, ref IReadOnlyList<RelicModel> result)
+    private static void Apply(ref IReadOnlyList<RelicModel> result)
     {
-        if (!_showCharacterSelectPreview)
+        if (_showCharacterSelectPreview)
         {
-            result = Array.Empty<RelicModel>();
             return;
         }
 
-        result = character switch
-        {
-            Ironclad => [ModelDb.Relic<BurningBlood>()],
-            Silent => [ModelDb.Relic<RingOfTheSnake>()],
-            Defect => [ModelDb.Relic<CrackedCore>()],
-            Regent => [ModelDb.Relic<DivineRight>()],
-            Necrobinder => [ModelDb.Relic<BoundPhylactery>()],
-            _ => throw new InvalidOperationException($"Unknown character: {character.Id.Entry}")
-        };
+        result = Array.Empty<RelicModel>();
     }
 
     [HarmonyPatch(typeof(NCharacterSelectScreen), nameof(NCharacterSelectScreen.SelectCharacter))]
@@ -45,30 +36,30 @@ public static class StartingRelicsPatch
     [HarmonyPatch(typeof(Ironclad), nameof(CharacterModel.StartingRelics), MethodType.Getter)]
     private static class IroncladPatch
     {
-        private static void Postfix(Ironclad __instance, ref IReadOnlyList<RelicModel> __result) => Apply(__instance, ref __result);
+        private static void Postfix(ref IReadOnlyList<RelicModel> __result) => Apply(ref __result);
     }
 
     [HarmonyPatch(typeof(Silent), nameof(CharacterModel.StartingRelics), MethodType.Getter)]
     private static class SilentPatch
     {
-        private static void Postfix(Silent __instance, ref IReadOnlyList<RelicModel> __result) => Apply(__instance, ref __result);
+        private static void Postfix(ref IReadOnlyList<RelicModel> __result) => Apply(ref __result);
     }
 
     [HarmonyPatch(typeof(Defect), nameof(CharacterModel.StartingRelics), MethodType.Getter)]
     private static class DefectPatch
     {
-        private static void Postfix(Defect __instance, ref IReadOnlyList<RelicModel> __result) => Apply(__instance, ref __result);
+        private static void Postfix(ref IReadOnlyList<RelicModel> __result) => Apply(ref __result);
     }
 
     [HarmonyPatch(typeof(Regent), nameof(CharacterModel.StartingRelics), MethodType.Getter)]
     private static class RegentPatch
     {
-        private static void Postfix(Regent __instance, ref IReadOnlyList<RelicModel> __result) => Apply(__instance, ref __result);
+        private static void Postfix(ref IReadOnlyList<RelicModel> __result) => Apply(ref __result);
     }
 
     [HarmonyPatch(typeof(Necrobinder), nameof(CharacterModel.StartingRelics), MethodType.Getter)]
     private static class NecrobinderPatch
     {
-        private static void Postfix(Necrobinder __instance, ref IReadOnlyList<RelicModel> __result) => Apply(__instance, ref __result);
+        private static void Postfix(ref IReadOnlyList<RelicModel> __result) => Apply(ref __result);
     }
 }

@@ -14,4 +14,4 @@
 - mod 程式碼佈局：`src/VakuuPlayer/`（C# 專案）→ `build/mods/<ModId>/`（暫存）→ 複製到遊戲 `mods/`
 - `Patches/VakuuActPatch.cs`：第一幕固定 Vakuu、第三幕移除 Vakuu、強制新局開局 Ancient
 - `Patches/VakuuEventPatch.cs`：首次對話、單一接受選項、10 件遺物發放
-- `Patches/LocOverridesPatch.cs`：Vakuu 開場與接受選項的繁中／簡中／英文文字
+- `Patches/LocOverridesPatch.cs`：Vakuu 開場、接受選項與 VakuuContract 的繁中／簡中／英文文字

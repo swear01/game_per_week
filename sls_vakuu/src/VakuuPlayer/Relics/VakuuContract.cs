@@ -30,9 +30,7 @@ public sealed class VakuuContract : RelicModel
 
     public override RelicRarity Rarity => RelicRarity.Ancient;
 
-    public override string PackedIconPath => "res://images/relics/whispering_earring.png";
-    protected override string PackedIconOutlinePath => "res://images/relics/whispering_earring.png";
-    protected override string BigIconPath => "res://images/relics/whispering_earring.png";
+    protected override string IconBaseName => "whispering_earring";
 
     public override decimal ModifyMaxEnergy(Player player, decimal amount)
     {
