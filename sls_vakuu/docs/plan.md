@@ -22,10 +22,10 @@
 - Main-line audit（2026-08-21，基線 `c7a6568`）：
   - 五角色開局遺物覆蓋已靜態確認：`StartingRelicsPatch` 對 Ironclad、Silent、Defect、Regent、Necrobinder 都有精確 getter patch；deploy DLL 已用本次 Release build 重新整理，並以 IL dump 確認五個 nested `Postfix` 存在。
   - 五角色存檔／讀檔回歸仍未完成：既有 harness 只跑預設 Ironclad 新局，沒有逐角色 Save/Load marker；本次未啟動遊戲、未碰使用者 save，因此沒有把靜態結果當成實機通過。
-  - Workshop「首次上傳」並非未完成：git history 的 `52f2f75`／`c6c442b` 已建立並更新 item `3784362897`。本次整合版 deploy manifest 為 v0.1.8，待 ModUploader 完成更新並以回傳 log 確認 exact payload。
+  - Workshop「首次上傳」並非未完成：git history 的 `52f2f75`／`c6c442b` 已建立並更新 item `3784362897`。本次整合版 deploy manifest 為 v0.1.8，已由 ModUploader 完成更新；回傳 log 與 ISteam RemoteStorage 查詢均確認 exact payload。
 - Opening Ancient integration（2026-08-21）：第一幕固定 Vakuu、第三幕過濾 Vakuu、單一 Accept 取得 10 件遺物、原生角色頁預覽與 VakuuContract 本地化已合併至 main；使用者已手動確認整合後實機行為。
 - Release integration（2026-08-21）：合併 origin/main 的 v0.1.7 release hardening、Workshop metadata、截圖與測試工具；整合版 manifest 更新為 v0.1.8。
-- Workshop 3784362897：待 ModUploader 上傳 v0.1.8 exact payload。
+- Workshop 3784362897：已由 ModUploader 上傳 v0.1.8；回傳 log 顯示成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload。
 - 觀察：第三幕 `Glory.AllAncients` 已加入 Vakuu 過濾；舊存檔已生成的第三幕房間不會重新生成。
 
 ## Verification Gate
