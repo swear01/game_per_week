@@ -30,9 +30,9 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 
 ## Main-line 存檔／Workshop audit（不啟動遊戲）
 
-- `StartingRelicsPatch` 靜態覆蓋五個角色 getter；這只證明 patch 覆蓋，不等於五角色存檔／讀檔實機通過。
+- `StartingRelicsPatch` 靜態覆蓋五個角色 getter；這證明目前五角色的 patch scope，逐角色存檔／讀檔不在本版驗證範圍。
 - 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory`，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
-- 現有 harness 沒有五角色迴圈或 Save/Load 驗證；要完成這項仍需獨立測試 save 的實機回歸。本次遵守不啟動遊戲、不修改 settings/save，故保留為 blocker。
+- 現有 harness 沒有五角色迴圈或 Save/Load 驗證；使用者確認目前不要求逐角色存檔回歸，因此不列為 v0.1.8 release blocker。
 - Workshop item `3784362897` 的首次建立／更新有 git history 證據；本次整合 workspace manifest 為 v0.1.8，deploy DLL 已以本次 Release build 重新整理。ModUploader 回傳成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload；主圖下載後 hash 與本地 `image.png` 一致，log 也確認四張新附加圖加入、五張舊圖移除。
 
 ## 驗證清單（每次迭代）
@@ -50,7 +50,7 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 
 - 靜態確認 `Overgrowth`／`Underdocks` 只提供 Vakuu，`Glory` 過濾 Vakuu，且五個角色的原生 starting relic getter 在角色頁預覽期間保留原生結果。
 - 使用者已手動確認：第一幕 Ancient、四句台詞、單一 Accept、10 件遺物、Preserved Fog 原生手動選牌，以及第一場戰鬥的每回合自動出牌。
-- 自動 Harness 的第二回合判定不作為本次阻擋條件；測試時序曾在完整 hook 結束前提前結束戰鬥，使用者手動驗證取代該段自動 replay。
+- 早期自動 Harness 曾因 hook 時序提前結束第二回合；使用者後續已確認自動接管／replay 流程正常，因此此項已完成，不再列為阻擋條件。
 
 ## 遊戲內調試
 
