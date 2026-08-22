@@ -24,7 +24,7 @@ Slay the Spire 2 mod：玩家開局先進入 Vakuu Ancient，接受後取得全�
 ## 開發
 
 - 遊戲版本基線：v0.111.0（net9.0，引用遊戲自帶 `sts2.dll`/`0Harmony.dll`/`GodotSharp.dll`）
-- 建置：`dotnet build -c Release src/VakuuPlayer/`
+- 建置：`PATH="$HOME/.dotnet:$PATH" dotnet build -c Release src/VakuuPlayer/`
 - 一鍵測試：`./test.sh`（build → 部署到本地 mods → 重啟遊戲）
 - 完整研究筆記：`RESEARCH.md`；測試手冊：`docs/testing.md`
 
