@@ -11,3 +11,4 @@
 - 2026-08-16 完成 STS2 mod 開發研究（RESEARCH.md：環境/契約/生態/上傳/agent sync）
 - 2026-08-16 用 agents_rule 配置本 repo（AGENTS.md + CLAUDE.md symlink + docs/ + managed-repos 註冊）
 - 2026-08-20 PR #4 合併並發布 v0.1.7；Workshop 3784362897 已公開更新，含 english／schinese／tchinese metadata。
+- 2026-08-21–22 完成 v0.1.8 Opening Ancient 整合、實機核心流程驗證、Workshop deploy，以及主圖與四張 Steam F12 預覽圖更新；目前可進入後續自訂內容研究。

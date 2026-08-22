@@ -23,7 +23,7 @@
 - **macOS 遊戲程序路徑要匹配實際 bundle**：`ps` 顯示的可執行檔路徑是 `/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/Slay the Spire 2`；PID 過濾與退出 helper 都以完整 executable suffix 做 exact match，不能誤寫成 `/Slay the Spire 2.app/` 或只做目錄 substring match。
 - **Steam Workshop 描述支援分語言 metadata**：2026-08-20 查閱官方 `ISteamUGC` 文件並用 Workshop 3784362897 實測；`SetItemUpdateLanguage` 先於 `SetItemTitle`／`SetItemDescription`，可分別寫入 `english`、`schinese`、`tchinese`。官方 ModUploader 的 `workshop.json` 目前只有單一描述欄位，不能直接表達翻譯；正式描述不可把三種語言拼在一起，應使用 Workshop 語言欄位或支援該 API 的上傳器。
 - **Workshop 個人連結不屬於 `workshop.json`**：2026-08-21 從本機同步的個人資料檔讀取 Facebook、X/Twitter、YouTube、Reddit 帳號，並以已登入的 Workshop「編輯連結」頁面寫入 3784362897；官方 UGC uploader 不會更新這個區塊，描述欄位因此不再放 URL。
-+- **Workshop 圖片 payload 契約**：官方 ModUploader 的 `image.png` 是主圖，`previews/` 是以檔名維護的附加圖；本地缺少舊檔名會在更新時移除遠端圖片。2026-08-22 已用 Steam F12 截圖建立四張附加圖，並以 512×512 宣傳主圖替換舊 v0.1.0 主圖。
+- **Workshop 圖片 payload 契約**：官方 ModUploader 的 `image.png` 是主圖，`previews/` 是以檔名維護的附加圖；本地缺少舊檔名會在更新時移除遠端圖片。2026-08-22 已用 Steam F12 截圖建立四張附加圖，並以 512×512 宣傳主圖替換舊 v0.1.0 主圖。
 
 ## Decisions
 - **2026-08-16 不使用 skillshare 項目級 agent（`.skillshare/agents/`）**：使用者有既有的 agent sync 體系 — repo 級指令寫 `AGENTS.md`（agents_rule 工具管理，已註冊 `~/.agents/managed-repos.txt`），全局 agent 指令走 `~/.agents/AGENTS.md`（`transfer_MAC/scripts/sync-ai-agent-configs.py render` 分發到 codex/claude/gemini/opencode）。不要再自創 agent 文件。
