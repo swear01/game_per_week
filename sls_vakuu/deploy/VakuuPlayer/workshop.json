@@ -16,7 +16,7 @@
     }
   },
   "visibility": "public",
-  "changeNote": "v0.1.8：整合第一幕 Vakuu 開局、全部 10 件遺物、第三幕排除 Vakuu、角色頁預覽與本地化修正。",
+  "changeNote": "v0.1.8：更新 Workshop 宣傳主圖與四張遊戲截圖（第一幕開局、10 件遺物、Act 1 地圖、自動出牌）。",
   "tags": [
     "Gameplay"
   ],
