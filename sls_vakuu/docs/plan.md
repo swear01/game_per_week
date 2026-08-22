@@ -26,6 +26,7 @@
 - Opening Ancient integration（2026-08-21）：第一幕固定 Vakuu、第三幕過濾 Vakuu、單一 Accept 取得 10 件遺物、原生角色頁預覽與 VakuuContract 本地化已合併至 main；使用者已手動確認整合後實機行為。
 - Release integration（2026-08-21）：合併 origin/main 的 v0.1.7 release hardening、Workshop metadata、截圖與測試工具；整合版 manifest 更新為 v0.1.8。
 - Workshop 3784362897：已由 ModUploader 上傳 v0.1.8；回傳 log 顯示成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload。
+- Workshop image refresh（2026-08-22）：使用者提供的四張 Steam F12 截圖已整理為 opening、ten relics、Act 1 map、auto-play 四張附加圖；新 512×512 宣傳主圖已上傳，遠端主圖 hash 與本地 payload 一致。
 - 觀察：第三幕 `Glory.AllAncients` 已加入 Vakuu 過濾；舊存檔已生成的第三幕房間不會重新生成。
 
 ## Verification Gate

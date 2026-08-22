@@ -113,11 +113,12 @@ BaseLib 提供更多配置/内容 API 和 mod 间冲突协调框架。
 ### 首次上传
 1. 运行 ModUploader → 生成 `NewModWorkspace/`
 2. 改名（如 `MyMod/`），mod 文件放入其中 `content/` 目录（至少 json，一般 dll + pck）
-3. 填 `workshop.json`，替换 `image.png`（**必须 < 1MB**），可选 `previews/` 额外图
-4. 在 ModUploader 所在目录运行：`ModUploader upload -w <workspace文件夹>`
+3. 填 `workshop.json`，替换 `image.png`（**必须 < 1MB**，Workshop 主图）；可选 `previews/` 额外图（每张 **< 1MB**）
+4. `previews/` 的檔名會作為遠端附加預覽圖的 key；本地缺少既有檔名時，官方 uploader 會移除遠端對應圖片，因此上傳前要先確認完整圖片清單。
+5. 在 ModUploader 所在目录运行：`ModUploader upload -w <workspace文件夹>`
 
 ### 更新
-1. 新文件放入 `content/`，`workshop.json` 里填 `changeNote`
+1. 新文件放入 `content/`，图片更新放入 `image.png`／`previews/`，`workshop.json` 里填 `changeNote`
 2. 重跑 `ModUploader upload -w <workspace文件夹>` — mod id 自动从 `mod_id.txt` 读取
 
 ### workshop.json 字段

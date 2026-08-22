@@ -33,7 +33,7 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 - `StartingRelicsPatch` 靜態覆蓋五個角色 getter；這只證明 patch 覆蓋，不等於五角色存檔／讀檔實機通過。
 - 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory`，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
 - 現有 harness 沒有五角色迴圈或 Save/Load 驗證；要完成這項仍需獨立測試 save 的實機回歸。本次遵守不啟動遊戲、不修改 settings/save，故保留為 blocker。
-- Workshop item `3784362897` 的首次建立／更新有 git history 證據；本次整合 workspace manifest 為 v0.1.8，deploy DLL 已以本次 Release build 重新整理。ModUploader 回傳成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload。
+- Workshop item `3784362897` 的首次建立／更新有 git history 證據；本次整合 workspace manifest 為 v0.1.8，deploy DLL 已以本次 Release build 重新整理。ModUploader 回傳成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload；主圖下載後 hash 與本地 `image.png` 一致，log 也確認四張新附加圖加入、五張舊圖移除。
 
 ## 驗證清單（每次迭代）
 
