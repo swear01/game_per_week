@@ -28,10 +28,12 @@ jupyter notebook tests/jupyter/vakuu_gameplay_test.ipynb
 
 Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫遺物、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。它只啟用測試所需的本機 `VakuuPlayer`／`VakuuHarness`，不會停用其他 Workshop 或本機模組；測試結束會移除 harness 並還原存檔設定。測試 log 留在 `tests/jupyter/artifacts/`，截圖留在 `assets/screenshots/`。
 
+> **目前的 save 安全阻擋**：`vakuu_test.py` 尚未備份 v0.111.0 真正的 `profile1/saves/progress.save` 與 `current_run.save`，不可對真實 profile 執行。修正 runner 前只使用明確的拋棄式 profile；production 回歸先跑 `make test` 與 `dotnet build`。
+
 ## Main-line 存檔／Workshop audit（不啟動遊戲）
 
-- `StartingRelicsPatch` 靜態覆蓋五個角色 getter；這證明目前五角色的 patch scope，逐角色存檔／讀檔不在本版驗證範圍。
-- 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory`，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
+- 靜態回歸測試確認 production code 不 patch 任何角色的 `StartingRelics` getter，因此新局保留五個角色各自的原生起始遺物。
+- 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory` 並直接取得原生 starting relic，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
 - 現有 harness 沒有五角色迴圈或 Save/Load 驗證；使用者確認目前不要求逐角色存檔回歸，因此不列為 v0.1.8 release blocker。
 - Workshop item `3784362897` 的首次建立／更新有 git history 證據；本次整合 workspace manifest 為 v0.1.8，deploy DLL 已以本次 Release build 重新整理。ModUploader 回傳成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload；主圖下載後 hash 與本地 `image.png` 一致，log 也確認四張新附加圖加入、五張舊圖移除。
 
@@ -42,13 +44,13 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫�
 2. **遊戲內**（用戶操作）：
    - 角色選擇：所有角色名顯示「瓦庫」
    - 第一幕開局顯示 Vakuu Ancient；首次對話有四句瓦庫契約台詞，只有一個「接受」選項
-   - 遺物欄：按下接受後取得 10 件瓦庫遺物（含負面效果）
+   - 遺物欄：保留該職業原生起始遺物，按下接受後再取得 10 件瓦庫遺物（含負面效果）
    - 第一場戰鬥：確認第一回合、第二回合及後續每回合瓦庫都從左→右自動打牌（≤13 張），每次自動出牌完成後控制權回到玩家，才能使用藥水等操作
 3. **回歸**：遊戲更新後跑：載入偵測 → 新 run → 各內容類型 → hover/圖鑑 → 存檔讀檔 → 事件 → GUI
 
 ## Opening Ancient 整合驗證
 
-- 靜態確認 `Overgrowth`／`Underdocks` 只提供 Vakuu，`Glory` 過濾 Vakuu，且五個角色的原生 starting relic getter 在角色頁預覽期間保留原生結果。
+- 靜態確認 `Overgrowth`／`Underdocks` 只提供 Vakuu，`Glory` 過濾 Vakuu，且 production code 不 patch 五個角色的原生 starting relic getter。
 - 使用者已手動確認：第一幕 Ancient、四句台詞、單一 Accept、10 件遺物、Preserved Fog 原生手動選牌，以及第一場戰鬥的每回合自動出牌。
 - 早期自動 Harness 曾因 hook 時序提前結束第二回合；使用者後續已確認自動接管／replay 流程正常，因此此項已完成，不再列為阻擋條件。
 
