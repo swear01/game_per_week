@@ -6,6 +6,7 @@
 - 已確認 hapi Accessibility 正常；本地 VakuuPlayer 已重新啟用並成功載入
 - Preserved Fog 開局 NRE 已修正：`FinalizeStartingRelics` 發生在 `NRun.Create` 前，正式 mod 改由 `AfterActEntered` 協調原版 overlay
 - 五職業原生起始遺物已保留：移除舊 `StartingRelicsPatch`，10 件 Vakuu 遺物仍由第一幕 Ancient callback 另外取得
+- v0.1.9 release candidate：更新 deploy DLL／metadata，並以新實機圖呈現「原生起始遺物 + 10 件瓦庫遺物」
 
 ## Preserved Fog 修正（已完成；保留設計記錄）
 1. **移除目前的 `LocalCardSelectPatch`**：它只改選擇判斷，會在 `NOverlayStack.Instance` 尚未存在時觸發 NRE，且會影響所有單人卡牌選擇。
@@ -16,10 +17,10 @@
 6. **實機驗證**：新 run → 手動刪 3 張 → 10 件遺物 → 第一、第二回合及後續每回合自動出牌且控制權回到玩家，核心流程與自動回合已由使用者確認正常；不要求五角色逐一存檔／讀檔，因此不列為本版 release blocker。
 
 ## Jupyter 實機驗證狀態（核心流程已完成）
-- 已通過（2026-08-20）：Jupyter-compatible runner 在正常 Workshop／本機模組環境成功完成開局、Preserved Fog 手動刪 3 張、第一場實際戰鬥與第三幕指令流程。
-- 已通過：10 件 Vakuu 遺物全部存在；實機總遺物為 11 件，另包含 Ironclad 原生 `BurningBlood`，本輪沒有移除角色原生遺物。
-- 已通過：`auto_phase_turns=[1, 2]`、`auto_play_turns=[1, 2]`、自動出牌 9 張；第一回合結束指令成功送出，證明自動階段後控制權可回到玩家。
-- 已產生並提交 5 張遊戲視窗截圖至 `assets/screenshots/`。
+- 已通過（2026-08-24）：隔離模組的 runner 成功完成開局、Preserved Fog 手動刪 3 張、第一場實際戰鬥與第三幕指令流程。
+- 已通過：事件前只含 Ironclad 原生 `BURNING_BLOOD`；Accept 後總數 11，包含原生遺物與 10 件 Vakuu 遺物。
+- 已通過：`auto_phase_turns=[1, 2]`、`auto_play_turns=[1, 2]`、自動出牌 8 張；第一回合結束指令成功送出，證明自動階段後控制權可回到玩家。
+- 已產生 4 張 Godot viewport 實機圖：原生起始遺物、Preserved Fog、原生＋Vakuu 遺物、自動出牌。
 - Main-line audit（2026-08-21，基線 `c7a6568`；起始遺物項目由 2026-08-23 修正取代）：
   - 該基線仍包含五角色 getter 的 `StartingRelicsPatch`；2026-08-23 已移除，並以靜態回歸測試鎖定 production code 不得再攔截原生起始遺物。
   - 五角色逐一存檔／讀檔 marker 不在本次 scope：既有 harness 只跑預設 Ironclad 新局，本次也未碰使用者 save；使用者確認目前不需要逐角色回歸，因此不列為 v0.1.8 blocker。
@@ -38,4 +39,4 @@
 
 ## Verification Gate
 - 一次性 harness 已驗證 `AfterActEntered` 內原生 `NDeckCardSelectScreen` 顯示並完成選擇；正式 mod 不保留 harness、不使用 `CardSelectCmd.UseSelector` 自動選牌。
-- 2026-08-23 實機 log 已確認修正版新局在 Vakuu 事件前為 `total relics=1 ids=BURNING_BLOOD`；完整 harness 因既有 event task 控制流與 save 備份路徑問題未列為本次通過證據，runner 修正前不得用真實 profile 執行。
+- 2026-08-23 實機 log 已確認修正版新局在 Vakuu 事件前為 `total relics=1 ids=BURNING_BLOOD`；v0.1.9 runner 已修正 event task／Preserved Fog 控制流及本機 profile snapshot，實機執行仍需加上 Steam RemoteStorage 前後 guard。

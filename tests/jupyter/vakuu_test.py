@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -17,15 +18,31 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT = REPO_ROOT / "sls_vakuu"
 GAME_APP = Path.home() / "Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app"
 MOD_ROOT = GAME_APP / "Contents/MacOS/mods"
-WINDOW_ID_SOURCE = Path(__file__).with_name("window_id.swift")
-WINDOW_ID_BINARY = Path(__file__).with_name("artifacts") / "vakuu-window-id"
 LOG_PATH = Path.home() / "Library/Application Support/SlayTheSpire2/logs/godot.log"
 SAVE_ROOT = Path.home() / "Library/Application Support/SlayTheSpire2/steam"
+LIVE_STEPS = (
+    ("[VakuuHarness] Vakuu event ready; relics=1", "01-native-starting-relic.png"),
+    ("[VakuuHarness] Preserved Fog selection visible", "02-preserved-fog.png"),
+    ("[VakuuHarness] Accept complete; relics=11", "03-native-plus-vakuu-relics.png"),
+    ("[VakuuHarness] first combat room entered", None),
+    ("[VakuuHarness] auto-played card=", "04-auto-play.png"),
+)
+ACCOUNT_STATE_PATHS = (
+    Path("settings.save"),
+    Path("settings.save.backup"),
+    Path("profile.save"),
+    Path("profile.save.backup"),
+    Path("profile1"),
+    Path("modded/profile.save"),
+    Path("modded/profile.save.backup"),
+    Path("modded/profile1"),
+)
 
 
 @dataclass
 class TestSession:
     settings_path: Path
+    account_dir: Path
     backup_dir: Path
     pids: list[int]
     screenshots_dir: Path
@@ -39,22 +56,57 @@ def run(command: list[str]) -> None:
     subprocess.run(command, cwd=ROOT, check=True, env=env)
 
 
-def compile_window_id_helper() -> Path:
-    WINDOW_ID_BINARY.parent.mkdir(parents=True, exist_ok=True)
-    if not WINDOW_ID_BINARY.exists() or WINDOW_ID_BINARY.stat().st_mtime < WINDOW_ID_SOURCE.stat().st_mtime:
-        subprocess.run(
-            ["swiftc", str(WINDOW_ID_SOURCE), "-o", str(WINDOW_ID_BINARY)],
-            check=True,
-            timeout=120,
-        )
-    return WINDOW_ID_BINARY
-
-
 def settings_path() -> Path:
     paths = sorted(SAVE_ROOT.glob("*/settings.save"))
     if len(paths) != 1:
         raise RuntimeError(f"expected exactly one settings.save, found {len(paths)}: {paths}")
     return paths[0]
+
+
+def backup_account_state(account_dir: Path, backup_dir: Path) -> None:
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    for relative in ACCOUNT_STATE_PATHS:
+        source = account_dir / relative
+        target = backup_dir / relative
+        if source.is_dir():
+            shutil.copytree(source, target)
+        elif source.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+
+
+def restore_account_state(account_dir: Path, backup_dir: Path) -> None:
+    for relative in ACCOUNT_STATE_PATHS:
+        source = backup_dir / relative
+        target = account_dir / relative
+        if target.is_dir():
+            shutil.rmtree(target)
+        elif target.exists():
+            target.unlink()
+        if source.is_dir():
+            shutil.copytree(source, target)
+        elif source.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+
+
+def configure_test_mods(data: dict[str, object]) -> None:
+    mod_list = data["mod_settings"]["mod_list"]
+    wanted = {("VakuuPlayer", "mods_directory"), ("VakuuHarness", "mods_directory")}
+    seen = set()
+    for entry in mod_list:
+        key = (entry.get("id"), entry.get("source"))
+        entry["is_enabled"] = key in wanted
+        if key in wanted:
+            seen.add(key)
+    for mod_id, source in sorted(wanted - seen):
+        mod_list.append({"id": mod_id, "is_enabled": True, "source": source})
+
+    indexes = {entry.get("id"): index for index, entry in enumerate(mod_list)}
+    vakuu_index = indexes.get("VakuuPlayer")
+    harness_index = indexes.get("VakuuHarness")
+    if vakuu_index is not None and harness_index is not None and vakuu_index > harness_index:
+        mod_list[vakuu_index], mod_list[harness_index] = mod_list[harness_index], mod_list[vakuu_index]
 
 
 def build() -> None:
@@ -78,15 +130,13 @@ def prepare() -> TestSession:
     screenshots_dir.mkdir(parents=True, exist_ok=True)
 
     settings = settings_path()
-    shutil.copy2(settings, backup_dir / "settings.save")
-    progress = settings.parent / "saves/progress.save"
-    if progress.exists():
-        shutil.copy2(progress, backup_dir / "progress.save")
+    account_dir = settings.parent
+    backup_account_state(account_dir, backup_dir / "account")
     if LOG_PATH.exists():
         shutil.copy2(LOG_PATH, backup_dir / "godot.log")
         LOG_PATH.write_text("", encoding="utf-8")
 
-    return TestSession(settings, backup_dir, [], screenshots_dir, artifacts_dir)
+    return TestSession(settings, account_dir, backup_dir, [], screenshots_dir, artifacts_dir)
 
 
 def deploy_and_enable(session: TestSession) -> None:
@@ -100,23 +150,7 @@ def deploy_and_enable(session: TestSession) -> None:
     shutil.copy2(REPO_ROOT / "tests/jupyter/VakuuHarness/VakuuHarness.json", harness_mod / "VakuuHarness.json")
 
     data = json.loads(session.settings_path.read_text(encoding="utf-8"))
-    mod_list = data["mod_settings"]["mod_list"]
-    wanted = {("VakuuPlayer", "mods_directory"), ("VakuuHarness", "mods_directory")}
-    seen = set()
-    for entry in mod_list:
-        key = (entry.get("id"), entry.get("source"))
-        if key in wanted:
-            entry["is_enabled"] = True
-            seen.add(key)
-    for mod_id, source in sorted(wanted - seen):
-        mod_list.append({"id": mod_id, "is_enabled": True, "source": source})
-
-    indexes = {entry.get("id"): index for index, entry in enumerate(mod_list)}
-    vakuu_index = indexes.get("VakuuPlayer")
-    harness_index = indexes.get("VakuuHarness")
-    if vakuu_index is not None and harness_index is not None and vakuu_index > harness_index:
-        mod_list[vakuu_index], mod_list[harness_index] = mod_list[harness_index], mod_list[vakuu_index]
-
+    configure_test_mods(data)
     session.settings_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
@@ -134,26 +168,30 @@ def launch(session: TestSession) -> None:
     raise TimeoutError("game process did not start within 90 seconds")
 
 
-def capture(session: TestSession, name: str) -> Path:
-    path = session.screenshots_dir / name
-    path.unlink(missing_ok=True)
-    window_id = subprocess.check_output(
-        [compile_window_id_helper()], text=True, timeout=30
-    ).strip()
-    if not window_id.isdigit():
-        raise RuntimeError(f"window helper returned invalid window id: {window_id!r}")
-    run(["/usr/sbin/screencapture", "-x", "-l", window_id, str(path)])
-    if not path.exists() or path.stat().st_size == 0:
-        raise RuntimeError(f"screenshot was not created: {path}")
-    return path
+def collect_harness_screenshots(log_path: Path, destination: Path) -> None:
+    matches = re.findall(
+        r"^\[VakuuHarness\] screenshot saved name=(\S+) path=(.+)$",
+        log_path.read_text(encoding="utf-8", errors="replace"),
+        re.MULTILINE,
+    )
+    sources = {name: Path(path) for name, path in matches}
+    expected = [name for _, name in LIVE_STEPS if name is not None]
+    missing = [name for name in expected if name not in sources]
+    if missing:
+        raise RuntimeError(f"harness screenshots missing from log: {missing}")
+
+    destination.mkdir(parents=True, exist_ok=True)
+    for name in expected:
+        source = sources[name]
+        if not source.is_file() or source.stat().st_size == 0:
+            raise RuntimeError(f"harness screenshot was not created: {source}")
+        shutil.copy2(source, destination / name)
 
 
 def wait_for_marker(
     session: TestSession,
     marker: str,
-    screenshot_name: str | None = None,
     timeout: int = 600,
-    screenshot_delay: float = 0,
 ) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -163,10 +201,6 @@ def wait_for_marker(
             tail = text[-4000:]
             raise RuntimeError(f"harness reported failure while waiting for {marker!r}\n{tail}")
         if marker in text:
-            if screenshot_name is not None:
-                if screenshot_delay > 0:
-                    time.sleep(screenshot_delay)
-                capture(session, screenshot_name)
             return
         time.sleep(2)
     tail = text[-4000:] if "text" in locals() else ""
@@ -174,13 +208,9 @@ def wait_for_marker(
 
 
 def finish(session: TestSession) -> dict[str, object]:
-    wait_for_marker(
-        session,
-        "[VakuuHarness] Neow dialogue visible",
-        "06-neow-vakuu.png",
-        screenshot_delay=3,
-    )
-    wait_for_marker(session, "[VakuuHarness] FINAL ", "05-final.png")
+    wait_for_marker(session, "[VakuuHarness] Neow dialogue visible")
+    wait_for_marker(session, "[VakuuHarness] FINAL ")
+    collect_harness_screenshots(LOG_PATH, session.screenshots_dir)
     shutil.copy2(LOG_PATH, session.artifacts_dir / "godot.log")
     return validate_log(session.artifacts_dir / "godot.log")
 
@@ -191,10 +221,7 @@ def cleanup(session: TestSession) -> None:
     harness_mod = MOD_ROOT / "VakuuHarness"
     if harness_mod.exists():
         shutil.rmtree(harness_mod)
-    shutil.copy2(session.backup_dir / "settings.save", session.settings_path)
-    progress_backup = session.backup_dir / "progress.save"
-    if progress_backup.exists():
-        shutil.copy2(progress_backup, session.settings_path.parent / "saves/progress.save")
+    restore_account_state(session.account_dir, session.backup_dir / "account")
     log_backup = session.backup_dir / "godot.log"
     if log_backup.exists():
         shutil.copy2(log_backup, LOG_PATH)
@@ -206,10 +233,8 @@ def run_test() -> dict[str, object]:
         build()
         deploy_and_enable(session)
         launch(session)
-        wait_for_marker(session, "[VakuuHarness] starting Vakuu relics=10", "01-relics.png")
-        wait_for_marker(session, "[VakuuHarness] confirming first 3 snapshot cards", "02-preserved-fog.png")
-        wait_for_marker(session, "[VakuuHarness] first combat room entered", "03-first-combat.png")
-        wait_for_marker(session, "[VakuuHarness] auto-phase turn=1", "04-auto-turn-1.png")
+        for marker, _ in LIVE_STEPS:
+            wait_for_marker(session, marker)
         return finish(session)
     finally:
         if LOG_PATH.exists():

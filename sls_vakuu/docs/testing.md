@@ -26,16 +26,16 @@ make test   # deck_merger + Jupyter static tests
 jupyter notebook tests/jupyter/vakuu_gameplay_test.ipynb
 ```
 
-Notebook 會建立並部署一次性 `VakuuHarness`，驗證開局 10 件瓦庫遺物、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。它只啟用測試所需的本機 `VakuuPlayer`／`VakuuHarness`，不會停用其他 Workshop 或本機模組；測試結束會移除 harness 並還原存檔設定。測試 log 留在 `tests/jupyter/artifacts/`，截圖留在 `assets/screenshots/`。
+Notebook 會建立並部署一次性 `VakuuHarness`，驗證原生起始遺物、事件追加 10 件瓦庫遺物、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。測試期間只啟用本機 `VakuuPlayer`／`VakuuHarness`，隔離其他 Workshop 與本機模組；測試前會備份帳號的 `settings.save`、一般／modded profile 與完整 `profile1` 目錄，測試結束後移除 harness 並精確還原原本存在或不存在的檔案與模組設定。Harness 直接擷取 Godot viewport，四張證據圖留在 `assets/screenshots/`，log 留在 `tests/jupyter/artifacts/`。
 
-> **目前的 save 安全阻擋**：`vakuu_test.py` 尚未備份 v0.111.0 真正的 `profile1/saves/progress.save` 與 `current_run.save`，不可對真實 profile 執行。修正 runner 前只使用明確的拋棄式 profile；production 回歸先跑 `make test` 與 `dotnet build`。
+> **Steam Cloud guard**：本機 runner 已能還原完整 profile，但真實 profile 測試仍要在執行前後查驗 Steam RemoteStorage；若測試前沒有 `current_run.save`、測試後卻出現，只能在 SHA-256 確認它是本次測試產物後刪除。不得用未比對內容的廣泛清理。
 
 ## Main-line 存檔／Workshop audit（不啟動遊戲）
 
 - 靜態回歸測試確認 production code 不 patch 任何角色的 `StartingRelics` getter，因此新局保留五個角色各自的原生起始遺物。
 - 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory` 並直接取得原生 starting relic，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
-- 現有 harness 沒有五角色迴圈或 Save/Load 驗證；使用者確認目前不要求逐角色存檔回歸，因此不列為 v0.1.8 release blocker。
-- Workshop item `3784362897` 的首次建立／更新有 git history 證據；本次整合 workspace manifest 為 v0.1.8，deploy DLL 已以本次 Release build 重新整理。ModUploader 回傳成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload；主圖下載後 hash 與本地 `image.png` 一致，log 也確認四張新附加圖加入、五張舊圖移除。
+- 現有 harness 沒有五角色迴圈或 Save/Load 驗證；靜態契約覆蓋五角色，實機回歸以 Ironclad 起始遺物與完整 Vakuu 流程為代表。
+- Workshop item `3784362897` 的首次建立／更新有 git history 證據；v0.1.8 曾由 ModUploader 與 ISteam RemoteStorage 驗證，v0.1.9 的 deploy DLL、metadata 與四張新實機圖需在合併後上傳並重新驗證遠端 payload。
 
 ## 驗證清單（每次迭代）
 
@@ -116,6 +116,7 @@ Cannot wait for remote choice in singleplayer!
 - 第一輪測試完成選牌並移除 3 張牌；第二輪 snapshot 測試確認畫面只有起始牌、沒有 Decay/Writhe/Apparitions
 - 兩輪均無 `NullReferenceException`、無 `Cannot wait for remote choice`
 - harness 已移除；本地正式 VakuuPlayer 仍可載入
+- 2026-08-24：隔離模組的 v0.1.9 harness 完整通過；事件前 `relics=1 ids=BURNING_BLOOD`，接受後 `relics=11`，第一場戰鬥跨 turn 1、2 自動出牌共 8 張，第三幕古神排除 Vakuu。測試前後本機 profile SHA-256 相同，Steam RemoteStorage 沒有遺留測試 `current_run.save`。
 
 ## Log
 

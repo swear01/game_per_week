@@ -1,22 +1,22 @@
 {
   "title": "Vakuu Spire",
-  "description": "[h1]Vakuu Spire[/h1]\nYou are no longer an ordinary climber — you are Vakuu, the First Demon, and even Neow speaks with his words.\n\n[h2]Features[/h2]\n[list]\n[*]Start each run by entering Vakuu Ancient in Act 1; accept to receive all 10 of Vakuu's relics, including their drawbacks\n[*]Vakuu takes control every turn and plays cards left to right until no playable cards, no energy, or 13 cards played\n[*]Potions and other items become usable after Vakuu finishes and control returns to you\n[*]Vakuu is excluded from the Act 3 Ancient pool\n[/list]",
+  "description": "[h1]Vakuu Spire[/h1]\nYou are no longer an ordinary climber — you are Vakuu, the First Demon, and even Neow speaks with his words.\n\n[h2]Features[/h2]\n[list]\n[*]Keep your character's native starting relic\n[*]Start each run by entering Vakuu Ancient in Act 1; accept to receive all 10 of Vakuu's relics, including their drawbacks\n[*]Vakuu takes control every turn and plays cards left to right until no playable cards, no energy, or 13 cards played\n[*]Potions and other items become usable after Vakuu finishes and control returns to you\n[*]Vakuu is excluded from the Act 3 Ancient pool\n[/list]",
   "localizations": {
     "english": {
       "title": "Vakuu Spire",
-      "description": "[h1]Vakuu Spire[/h1]\nYou are no longer an ordinary climber — you are Vakuu, the First Demon, and even Neow speaks with his words.\n\n[h2]Features[/h2]\n[list]\n[*]Start each run by entering Vakuu Ancient in Act 1; accept to receive all 10 of Vakuu's relics, including their drawbacks\n[*]Vakuu takes control every turn and plays cards left to right until no playable cards, no energy, or 13 cards played\n[*]Potions and other items become usable after Vakuu finishes and control returns to you\n[*]Vakuu is excluded from the Act 3 Ancient pool\n[/list]"
+      "description": "[h1]Vakuu Spire[/h1]\nYou are no longer an ordinary climber — you are Vakuu, the First Demon, and even Neow speaks with his words.\n\n[h2]Features[/h2]\n[list]\n[*]Keep your character's native starting relic\n[*]Start each run by entering Vakuu Ancient in Act 1; accept to receive all 10 of Vakuu's relics, including their drawbacks\n[*]Vakuu takes control every turn and plays cards left to right until no playable cards, no energy, or 13 cards played\n[*]Potions and other items become usable after Vakuu finishes and control returns to you\n[*]Vakuu is excluded from the Act 3 Ancient pool\n[/list]"
     },
     "schinese": {
       "title": "瓦库尖塔",
-      "description": "[h1]瓦库尖塔[/h1]\n你不再是一般的爬塔者——你是第一个恶魔瓦库（Vakuu），连涅奥都换上了瓦库的台词。\n\n[h2]特色[/h2]\n[list]\n[*]每局第一幕进入瓦库远古，接受后获得瓦库全部 10 件遗物，包括它们的负面效果\n[*]瓦库每回合接管并从左到右自动出牌，直到没有可出的牌、能量耗尽或打满 13 张\n[*]瓦库完成自动出牌并将控制权交还给玩家后，才能使用药水等道具\n[*]第三幕远古池不会出现瓦库\n[/list]"
+      "description": "[h1]瓦库尖塔[/h1]\n你不再是一般的爬塔者——你是第一个恶魔瓦库（Vakuu），连涅奥都换上了瓦库的台词。\n\n[h2]特色[/h2]\n[list]\n[*]保留职业的原生初始遗物\n[*]每局第一幕进入瓦库远古，接受后获得瓦库全部 10 件遗物，包括它们的负面效果\n[*]瓦库每回合接管并从左到右自动出牌，直到没有可出的牌、能量耗尽或打满 13 张\n[*]瓦库完成自动出牌并将控制权交还给玩家后，才能使用药水等道具\n[*]第三幕远古池不会出现瓦库\n[/list]"
     },
     "tchinese": {
       "title": "瓦庫尖塔",
-      "description": "[h1]瓦庫尖塔[/h1]\n你不再是一般的爬塔者——你是第一個惡魔瓦庫（Vakuu），連涅奧都換上了瓦庫的台詞。\n\n[h2]特色[/h2]\n[list]\n[*]每局第一幕進入瓦庫遠古，接受後獲得瓦庫全部 10 件遺物，包括它們的負面效果\n[*]瓦庫每回合接管並從左到右自動打牌，直到沒有可出的牌、能量耗盡或打滿 13 張\n[*]瓦庫完成自動打牌並將控制權交還給玩家後，才能使用藥水等道具\n[*]第三幕遠古池不會出現瓦庫\n[/list]"
+      "description": "[h1]瓦庫尖塔[/h1]\n你不再是一般的爬塔者——你是第一個惡魔瓦庫（Vakuu），連涅奧都換上了瓦庫的台詞。\n\n[h2]特色[/h2]\n[list]\n[*]保留職業的原生起始遺物\n[*]每局第一幕進入瓦庫遠古，接受後獲得瓦庫全部 10 件遺物，包括它們的負面效果\n[*]瓦庫每回合接管並從左到右自動打牌，直到沒有可出的牌、能量耗盡或打滿 13 張\n[*]瓦庫完成自動打牌並將控制權交還給玩家後，才能使用藥水等道具\n[*]第三幕遠古池不會出現瓦庫\n[/list]"
     }
   },
   "visibility": "public",
-  "changeNote": "v0.1.8：更新 Workshop 宣傳主圖與四張遊戲截圖（第一幕開局、10 件遺物、Act 1 地圖、自動出牌）。",
+  "changeNote": "v0.1.9：保留每個職業的原生起始遺物；接受瓦庫契約後再取得 10 件瓦庫遺物。更新 Workshop 主圖與實機截圖。",
   "tags": [
     "Gameplay"
   ],

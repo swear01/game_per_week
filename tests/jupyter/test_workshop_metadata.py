@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 WORKSHOP = Path(__file__).parents[2] / "sls_vakuu/deploy/VakuuPlayer/workshop.json"
+MANIFEST = WORKSHOP.with_name("content") / "VakuuPlayer.json"
 
 
 class WorkshopMetadataTests(unittest.TestCase):
@@ -43,6 +44,15 @@ class WorkshopMetadataTests(unittest.TestCase):
 
     def test_workshop_remains_public(self):
         self.assertEqual(self.data["visibility"], "public")
+
+    def test_release_preserves_native_starting_relics(self):
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+        self.assertEqual(manifest["version"], "0.1.9")
+        self.assertIn("v0.1.9", self.data["changeNote"])
+        self.assertIn("native starting relic", self.localizations["english"]["description"])
+        self.assertIn("原生起始遺物", self.localizations["tchinese"]["description"])
+        self.assertIn("原生初始遗物", self.localizations["schinese"]["description"])
 
 
 if __name__ == "__main__":
