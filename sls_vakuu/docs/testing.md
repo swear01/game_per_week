@@ -35,7 +35,7 @@ Notebook 會建立並部署一次性 `VakuuHarness`，驗證原生起始遺物�
 - 靜態回歸測試確認 production code 不 patch 任何角色的 `StartingRelics` getter，因此新局保留五個角色各自的原生起始遺物。
 - 遊戲 v0.111.0 的反編譯契約已確認：新局走 `Player.CreateForNewRun`／`PopulateStartingInventory` 並直接取得原生 starting relic，讀檔走 `Player.FromSerializable`／`LoadInventory`；遺物以 `RelicModel.ToSerializable`／`FromSerializable` 保存 ID 與 properties，不會再次套用 starting relic getter。
 - 現有 harness 沒有五角色迴圈或 Save/Load 驗證；靜態契約覆蓋五角色，實機回歸以 Ironclad 起始遺物與完整 Vakuu 流程為代表。
-- Workshop item `3784362897` 的首次建立／更新有 git history 證據；v0.1.8 曾由 ModUploader 與 ISteam RemoteStorage 驗證，v0.1.9 的 deploy DLL、metadata 與四張新實機圖需在合併後上傳並重新驗證遠端 payload。
+- Workshop item `3784362897` 的 v0.1.9 已由 ModUploader 上傳；Steam API 與 client 重新下載均確認 41,352-byte manifest `8288923953175858767`、v0.1.9 manifest，且遠端 DLL SHA-256 與 deploy 相同。English、schinese、tchinese 頁面均顯示保留原生起始遺物，遠端主圖與四張預覽的 SHA-256 集合也與本地一致。
 
 ## 驗證清單（每次迭代）
 
