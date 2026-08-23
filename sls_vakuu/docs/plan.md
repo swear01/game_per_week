@@ -5,6 +5,7 @@
 - Repo agent 配置完成 ✅（agents_rule init + docs/ scaffold）
 - 已確認 hapi Accessibility 正常；本地 VakuuPlayer 已重新啟用並成功載入
 - Preserved Fog 開局 NRE 已修正：`FinalizeStartingRelics` 發生在 `NRun.Create` 前，正式 mod 改由 `AfterActEntered` 協調原版 overlay
+- 五職業原生起始遺物已保留：移除舊 `StartingRelicsPatch`，10 件 Vakuu 遺物仍由第一幕 Ancient callback 另外取得
 
 ## Preserved Fog 修正（已完成；保留設計記錄）
 1. **移除目前的 `LocalCardSelectPatch`**：它只改選擇判斷，會在 `NOverlayStack.Instance` 尚未存在時觸發 NRE，且會影響所有單人卡牌選擇。
@@ -19,8 +20,8 @@
 - 已通過：10 件 Vakuu 遺物全部存在；實機總遺物為 11 件，另包含 Ironclad 原生 `BurningBlood`，本輪沒有移除角色原生遺物。
 - 已通過：`auto_phase_turns=[1, 2]`、`auto_play_turns=[1, 2]`、自動出牌 9 張；第一回合結束指令成功送出，證明自動階段後控制權可回到玩家。
 - 已產生並提交 5 張遊戲視窗截圖至 `assets/screenshots/`。
-- Main-line audit（2026-08-21，基線 `c7a6568`）：
-  - 五角色開局遺物覆蓋已靜態確認：`StartingRelicsPatch` 對 Ironclad、Silent、Defect、Regent、Necrobinder 都有精確 getter patch；deploy DLL 已用本次 Release build 重新整理，並以 IL dump 確認五個 nested `Postfix` 存在。
+- Main-line audit（2026-08-21，基線 `c7a6568`；起始遺物項目由 2026-08-23 修正取代）：
+  - 該基線仍包含五角色 getter 的 `StartingRelicsPatch`；2026-08-23 已移除，並以靜態回歸測試鎖定 production code 不得再攔截原生起始遺物。
   - 五角色逐一存檔／讀檔 marker 不在本次 scope：既有 harness 只跑預設 Ironclad 新局，本次也未碰使用者 save；使用者確認目前不需要逐角色回歸，因此不列為 v0.1.8 blocker。
   - Workshop「首次上傳」並非未完成：git history 的 `52f2f75`／`c6c442b` 已建立並更新 item `3784362897`。本次整合版 deploy manifest 為 v0.1.8，已由 ModUploader 完成更新；回傳 log 與 ISteam RemoteStorage 查詢均確認 exact payload。
 - Opening Ancient integration（2026-08-21）：第一幕固定 Vakuu、第三幕過濾 Vakuu、單一 Accept 取得 10 件遺物、原生角色頁預覽與 VakuuContract 本地化已合併至 main；使用者已手動確認整合後實機行為。
@@ -37,3 +38,4 @@
 
 ## Verification Gate
 - 一次性 harness 已驗證 `AfterActEntered` 內原生 `NDeckCardSelectScreen` 顯示並完成選擇；正式 mod 不保留 harness、不使用 `CardSelectCmd.UseSelector` 自動選牌。
+- 2026-08-23 實機 log 已確認修正版新局在 Vakuu 事件前為 `total relics=1 ids=BURNING_BLOOD`；完整 harness 因既有 event task 控制流與 save 備份路徑問題未列為本次通過證據，runner 修正前不得用真實 profile 執行。

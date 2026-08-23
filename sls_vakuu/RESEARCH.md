@@ -211,8 +211,8 @@ skillshare status --json                  # 含 agentSync/agentLinkedCount 状�
 - `AncientEventModel.Done()` 會更新 Ancient choice history 並完成事件；它是 protected，單一選項 callback 透過精確反射呼叫，不使用 `StartPreFinished()` 省略歷史記錄。
 - `LocTable.MergeWith()` 直接把傳入字典寫入內部 translation dictionary，因此可在 `LoadTablesFromPath` Postfix 新增自訂 Vakuu option 與 dialogue keys。
 - `AncientDialogueSet.GetValidDialogues()` 會在 total visits 為 0 時優先使用 `FirstVisitEverDialogue`，之後才按角色與造訪次數選擇 `CharacterDialogues`；本 mod 只替換首次開場，保留原生職業分流。
-- `NGame.StartRun` 在 `FinalizeStartingRelics()` 時尚未建立 `NRun`；因此角色起始遺物必須清空，Preserved Fog 改由第一幕事件 callback 在原生 UI 建立後取得。
-- `NCharacterSelectScreen.SelectCharacter()` 會直接讀取 `CharacterModel.StartingRelics[0]` 作為頁面預覽；清空 getter 必須以精確的 `SelectCharacter` scope 暫時提供原生預覽遺物，否則角色頁會發生 index exception。
+- `NGame.StartRun` 在 `FinalizeStartingRelics()` 時尚未建立 `NRun`；這只限制真正的起始遺物。五個角色的原生遺物照常建立，10 件 Vakuu 遺物則由第一幕事件 callback 在 `NRun` 建立後取得。
+- `NCharacterSelectScreen.SelectCharacter()` 會直接讀取 `CharacterModel.StartingRelics[0]` 作為頁面預覽；模組不應清空或 patch 這個 getter，新局與角色頁都沿用原生結果。
 
 ### 資源變更
 - 只改 .cs → 只 Build（複製 dll）；改資源/本地化/場景 → 需 Publish（Godot 打包 pck）
@@ -252,8 +252,8 @@ PreloadRunAssets
 
 ### 存檔／讀檔契約（v0.111.0，反編譯確認）
 
-- `StartingRelicsPatch` 只 patch 五個角色的 `CharacterModel.StartingRelics` getter：Ironclad、Silent、Defect、Regent、Necrobinder。
-- 新局 `Player.CreateForNewRun` 會走 `PopulateStartingInventory`，因此套用 starting relic getter；讀檔 `Player.FromSerializable` 則走 `LoadInventory`，直接由 `SerializablePlayer.Relics` 還原，不會再次呼叫 starting relic getter。
+- 模組不 patch 五個角色的 `CharacterModel.StartingRelics` getter；新局保留 Ironclad、Silent、Defect、Regent、Necrobinder 各自的原生起始遺物。
+- 新局 `Player.CreateForNewRun` 會走 `PopulateStartingInventory`，因此直接取得原生 starting relic；讀檔 `Player.FromSerializable` 則走 `LoadInventory`，直接由 `SerializablePlayer.Relics` 還原，不會再次呼叫 starting relic getter。
 - `Player.ToSerializable` 以 `RelicModel.ToSerializable` 保存每件遺物的 `Id`、`SavedProperties` 與 `FloorAddedToDeck`；`RelicModel.FromSerializable` 以 ID 取回可變模型並填回 properties。`VakuuContract` 沒有自訂存檔格式，沿用此契約。
 - 因此靜態 API 契約預期讀檔不會重複追加十件遺物；仍須用五角色的獨立實機存檔／讀檔回歸驗證 runtime 行為，不能用 source inspection 取代。
 
