@@ -6,7 +6,7 @@
 - 已確認 hapi Accessibility 正常；本地 VakuuPlayer 已重新啟用並成功載入
 - Preserved Fog 開局 NRE 已修正：`FinalizeStartingRelics` 發生在 `NRun.Create` 前，正式 mod 改由 `AfterActEntered` 協調原版 overlay
 - 五職業原生起始遺物已保留：移除舊 `StartingRelicsPatch`，10 件 Vakuu 遺物仍由第一幕 Ancient callback 另外取得
-- v0.1.9 release candidate：更新 deploy DLL／metadata，並以新實機圖呈現「原生起始遺物 + 10 件瓦庫遺物」
+- v0.1.9 已發布：deploy DLL／三語 metadata 與新實機圖均已更新，明確呈現「原生起始遺物 + 10 件瓦庫遺物」
 
 ## Preserved Fog 修正（已完成；保留設計記錄）
 1. **移除目前的 `LocalCardSelectPatch`**：它只改選擇判斷，會在 `NOverlayStack.Instance` 尚未存在時觸發 NRE，且會影響所有單人卡牌選擇。
@@ -29,14 +29,15 @@
 - Release integration（2026-08-21）：合併 origin/main 的 v0.1.7 release hardening、Workshop metadata、截圖與測試工具；整合版 manifest 更新為 v0.1.8。
 - Workshop 3784362897：已由 ModUploader 上傳 v0.1.8；回傳 log 顯示成功，ISteam RemoteStorage 查詢確認 title、description、public visibility 與 42882-byte payload。
 - Workshop image refresh（2026-08-22）：使用者提供的四張 Steam F12 截圖已整理為 opening、ten relics、Act 1 map、auto-play 四張附加圖；新 512×512 宣傳主圖已上傳，遠端主圖 hash 與本地 payload 一致。
+- Workshop v0.1.9（2026-08-24）：PR #13 合併後由 ModUploader 更新 item `3784362897`；Steam API 與 client 重新下載均確認 41,352-byte manifest `8288923953175858767`，訂閱內容為 v0.1.9，DLL SHA-256 與 deploy 完全相同。English、schinese、tchinese 描述均已加入保留原生起始遺物；遠端主圖與四張預覽的 SHA-256 集合也與本地一致。
 - 觀察：第三幕 `Glory.AllAncients` 已加入 Vakuu 過濾；舊存檔已生成的第三幕房間不會重新生成。
 
 ## 收尾結論
-- v0.1.8 的實作、Release deploy、Workshop metadata、主圖與四張預覽圖均已完成並驗證。
+- v0.1.9 的實作、Release deploy、三語 Workshop metadata、主圖與四張預覽圖均已完成並驗證。
 - 正式 mod 沒有已知待補的 production-code TODO。
 - 五個角色逐一 Save/Load 不在目前 scope；既有 serialization contract 靜態檢查已完成，使用者接受目前驗證範圍。
-- 使用者已確認自動接管／replay 流程正常；v0.1.8 沒有剩餘 release blocker，模組正式收尾。
+- 實機 harness 已確認原生遺物、10 件瓦庫遺物與自動接管流程；v0.1.9 沒有剩餘 release blocker，模組正式收尾。
 
 ## Verification Gate
 - 一次性 harness 已驗證 `AfterActEntered` 內原生 `NDeckCardSelectScreen` 顯示並完成選擇；正式 mod 不保留 harness、不使用 `CardSelectCmd.UseSelector` 自動選牌。
-- 2026-08-23 實機 log 已確認修正版新局在 Vakuu 事件前為 `total relics=1 ids=BURNING_BLOOD`；v0.1.9 runner 已修正 event task／Preserved Fog 控制流及本機 profile snapshot，實機執行仍需加上 Steam RemoteStorage 前後 guard。
+- 2026-08-24 實機 log 已確認 Vakuu 事件前為 `relics=1 ids=BURNING_BLOOD`、接受後為 11 件遺物；本機 profile 前後 SHA-256 相同，Steam RemoteStorage 沒有遺留測試 `current_run.save`。
