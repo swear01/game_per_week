@@ -637,7 +637,13 @@ public static class Harness
         var directory = System.IO.Path.Combine(OS.GetUserDataDir(), "vakuu-harness");
         System.IO.Directory.CreateDirectory(directory);
         var path = System.IO.Path.Combine(directory, name);
-        var error = tree.Root.GetTexture().GetImage().SavePng(path);
+        var texture = tree.Root.GetTexture();
+        var image = texture?.GetImage();
+        if (image == null)
+        {
+            throw new InvalidOperationException($"Could not retrieve viewport image for screenshot {name}.");
+        }
+        var error = image.SavePng(path);
         if (error != Error.Ok)
         {
             throw new InvalidOperationException($"Could not save viewport screenshot {name}: {error}");

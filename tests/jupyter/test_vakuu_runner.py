@@ -30,7 +30,9 @@ class VakuuRunnerTests(unittest.TestCase):
         source = (Path(__file__).with_name("VakuuHarness") / "Harness.cs").read_text(encoding="utf-8")
 
         self.assertIn("Interlocked.Exchange(ref _runStartRequested, 1)", source)
-        self.assertIn("tree.Root.GetTexture().GetImage()", source)
+        self.assertIn("var texture = tree.Root.GetTexture();", source)
+        self.assertIn("var image = texture?.GetImage();", source)
+        self.assertIn("if (image == null)", source)
         self.assertIn("SavePng", source)
 
     def test_collects_native_viewport_screenshots_from_log(self):
@@ -103,6 +105,27 @@ class VakuuRunnerTests(unittest.TestCase):
             self.assertEqual((saves / "progress.save").read_text(encoding="utf-8"), "original progress")
             self.assertFalse((saves / "current_run.save").exists())
             self.assertFalse((account / "modded/profile1").exists())
+
+    def test_preserves_symlinked_account_state(self):
+        with tempfile.TemporaryDirectory(prefix="vakuu-runner-") as directory:
+            root = Path(directory)
+            account = root / "account"
+            backup = root / "backup"
+            original = root / "original-profile"
+            replacement = root / "test-profile"
+            account.mkdir()
+            original.mkdir()
+            replacement.mkdir()
+            profile = account / "profile1"
+            profile.symlink_to(original, target_is_directory=True)
+
+            backup_account_state(account, backup)
+            profile.unlink()
+            profile.symlink_to(replacement, target_is_directory=True)
+            restore_account_state(account, backup)
+
+            self.assertTrue(profile.is_symlink())
+            self.assertEqual(profile.readlink(), original)
 
     def test_handles_deck_selection_before_waiting_for_event_choice(self):
         source = (Path(__file__).with_name("VakuuHarness") / "Harness.cs").read_text(encoding="utf-8")

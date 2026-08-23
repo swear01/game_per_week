@@ -26,7 +26,7 @@ make test   # deck_merger + Jupyter static tests
 jupyter notebook tests/jupyter/vakuu_gameplay_test.ipynb
 ```
 
-Notebook 會建立並部署一次性 `VakuuHarness`，驗證原生起始遺物、事件追加 10 件瓦庫遺物、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。測試期間只啟用本機 `VakuuPlayer`／`VakuuHarness`，隔離其他 Workshop 與本機模組；測試前會備份帳號的 `settings.save`、一般／modded profile 與完整 `profile1` 目錄，測試結束後移除 harness 並精確還原原本存在或不存在的檔案與模組設定。Harness 直接擷取 Godot viewport，四張證據圖留在 `assets/screenshots/`，log 留在 `tests/jupyter/artifacts/`。
+Notebook 會建立並部署一次性 `VakuuHarness`，驗證原生起始遺物、事件追加 10 件瓦庫遺物、Preserved Fog 手動刪牌、第一回合與第二回合自動出牌，以及自動階段後控制權回到玩家。測試期間只啟用本機 `VakuuPlayer`／`VakuuHarness`，隔離其他 Workshop 與本機模組；測試前會備份帳號的 `settings.save`、一般／modded profile 與完整 `profile1` 目錄，測試結束後移除 harness，並精確還原原本存在、不存在或為 symlink 的檔案與模組設定。Harness 直接擷取 Godot viewport，四張證據圖留在 `assets/screenshots/`，log 留在 `tests/jupyter/artifacts/`。
 
 > **Steam Cloud guard**：本機 runner 已能還原完整 profile，但真實 profile 測試仍要在執行前後查驗 Steam RemoteStorage；若測試前沒有 `current_run.save`、測試後卻出現，只能在 SHA-256 確認它是本次測試產物後刪除。不得用未比對內容的廣泛清理。
 

@@ -68,7 +68,10 @@ def backup_account_state(account_dir: Path, backup_dir: Path) -> None:
     for relative in ACCOUNT_STATE_PATHS:
         source = account_dir / relative
         target = backup_dir / relative
-        if source.is_dir():
+        if source.is_symlink():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(source.readlink())
+        elif source.is_dir():
             shutil.copytree(source, target)
         elif source.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -79,11 +82,16 @@ def restore_account_state(account_dir: Path, backup_dir: Path) -> None:
     for relative in ACCOUNT_STATE_PATHS:
         source = backup_dir / relative
         target = account_dir / relative
-        if target.is_dir():
+        if target.is_symlink():
+            target.unlink()
+        elif target.is_dir():
             shutil.rmtree(target)
         elif target.exists():
             target.unlink()
-        if source.is_dir():
+        if source.is_symlink():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(source.readlink())
+        elif source.is_dir():
             shutil.copytree(source, target)
         elif source.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
