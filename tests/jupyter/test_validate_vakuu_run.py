@@ -13,11 +13,10 @@ class VakuuRunValidationTests(unittest.TestCase):
             "[VakuuHarness] attached",
             "[VakuuHarness] Neow dialogue visible",
             "[VakuuHarness] VakuuContract localization resolved title=Vakuu's Contract languages=eng,zhs,zht,deu",
-            "[VakuuPlayer] opening deferred Preserved Fog selection",
+            "[VakuuHarness] Vakuu event ready; relics=1 ids=BURNING_BLOOD",
+            "[VakuuHarness] Preserved Fog selection visible",
             "[VakuuHarness] confirming first 3 snapshot cards",
-            "[VakuuPlayer] Preserved Fog removed cards: STRIKE, DEFEND",
-            "[VakuuHarness] starting Vakuu relics=10",
-            "BLOOD_SOAKED_ROSE FIDDLE PRESERVED_FOG SERE_TALON DISTINGUISHED_CAPE CHOICES_PARADOX MUSIC_BOX LORDS_PARASOL JEWELED_MASK VAKUU_CONTRACT",
+            "[VakuuHarness] Accept complete; relics=11 ids=BURNING_BLOOD,BLOOD_SOAKED_ROSE,FIDDLE,PRESERVED_FOG,SERE_TALON,DISTINGUISHED_CAPE,CHOICES_PARADOX,MUSIC_BOX,LORDS_PARASOL,JEWELED_MASK,VAKUU_CONTRACT",
             "[VakuuHarness] first combat room entered",
             "[VakuuHarness] auto-phase turn=1",
             "[VakuuHarness] auto-played card=STRIKE turn=1",
@@ -40,6 +39,12 @@ class VakuuRunValidationTests(unittest.TestCase):
 
     def test_rejects_vakuu_present_in_act_three_ancients(self):
         path = self.write_log("firstCombatAutoPlayCount=2 distinctAutoPlayTurns=1,2 thirdActVakuuExcluded=False")
+        with self.assertRaises(AssertionError):
+            validate_log(path)
+
+    def test_rejects_missing_native_starting_relic(self):
+        path = self.write_log("firstCombatAutoPlayCount=2 distinctAutoPlayTurns=1,2 thirdActVakuuExcluded=True")
+        path.write_text(path.read_text().replace("BURNING_BLOOD,", ""))
         with self.assertRaises(AssertionError):
             validate_log(path)
 

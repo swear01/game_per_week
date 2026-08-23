@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Threading;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
@@ -29,6 +30,9 @@ public static class Harness
     private const int WarmupFrames = 600;
     private const int HeartbeatInterval = 120;
     private const int EventOptionDelayFrames = 180;
+    private const int ScreenshotDelayFrames = 30;
+    private const int SelectionDelayFrames = 180;
+    private const int PostAcceptDelayFrames = 180;
     private const int StartingRelicWaitFrames = 600;
     private const int CombatWaitFrames = 360;
     private const int WinWaitFrames = 240;
@@ -50,7 +54,11 @@ public static class Harness
     ];
     private static bool _started;
     private static bool _selectionConfirmed;
+    private static int _selectionDelay;
     private static bool _optionChosen;
+    private static bool _eventReadyLogged;
+    private static bool _acceptCompleteLogged;
+    private static int _postAcceptDelay;
     private static EventModel? _pendingEventModel;
     private static Task? _optionTask;
     private static Task? _proceedTask;
@@ -76,11 +84,13 @@ public static class Harness
     private static int _winFrames;
     private static int _actFrames;
     private static int _autoPlayCount;
+    private static bool _pendingAutoPlayScreenshot;
     private static readonly List<string> AutoPlayedCards = [];
     private static readonly List<int> AutoPhaseTurns = [];
     private static readonly List<int> AutoPlayTurns = [];
     private static bool _openedSingleplayer;
     private static bool _openedCharacterSelect;
+    private static int _runStartRequested;
     private static int _frames;
     private static int _totalFrames;
 
@@ -193,6 +203,10 @@ public static class Harness
         var turn = CurrentCombatTurn();
         AutoPlayTurns.Add(turn);
         GD.Print($"[VakuuHarness] auto-played card={card.Id.Entry} count={_autoPlayCount} turn={turn}");
+        if (_autoPlayCount == 1)
+        {
+            _pendingAutoPlayScreenshot = true;
+        }
     }
 
     private static void Tick(SceneTree tree)
@@ -223,8 +237,50 @@ public static class Harness
         try
         {
             var root = tree.Root;
+            if (_pendingAutoPlayScreenshot)
+            {
+                CaptureViewport(tree, "04-auto-play.png");
+                _pendingAutoPlayScreenshot = false;
+            }
             if (_started)
             {
+                var selection = FindNode<NDeckCardSelectScreen>(root);
+                if (!_selectionConfirmed && selection != null)
+                {
+                    _selectionDelay++;
+                    if (_selectionDelay == ScreenshotDelayFrames)
+                    {
+                        CaptureViewport(tree, "02-preserved-fog.png");
+                        GD.Print("[VakuuHarness] Preserved Fog selection visible");
+                    }
+                    if (_selectionDelay < SelectionDelayFrames)
+                    {
+                        return;
+                    }
+
+                    var selectedCards = typeof(NDeckCardSelectScreen)
+                        .GetField("_selectedCards", BindingFlags.Instance | BindingFlags.NonPublic)
+                        ?.GetValue(selection) as HashSet<CardModel>;
+                    var cards = typeof(NDeckCardSelectScreen)
+                        .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
+                        ?.GetValue(selection) as IReadOnlyList<CardModel>;
+                    var confirm = selection.GetType().GetMethod(
+                        "CheckIfSelectionComplete", BindingFlags.Instance | BindingFlags.NonPublic);
+                    if (selectedCards == null || cards == null || confirm == null || cards.Count < 3)
+                    {
+                        throw new InvalidOperationException("Harness could not inspect the deck selection screen.");
+                    }
+
+                    foreach (var card in cards.Take(3))
+                    {
+                        selectedCards.Add(card);
+                    }
+                    _selectionConfirmed = true;
+                    GD.Print($"[VakuuHarness] confirming first 3 snapshot cards: {string.Join(", ", cards.Take(3).Select(c => c.Id.Entry))}");
+                    confirm.Invoke(selection, null);
+                    return;
+                }
+
                 if (!_optionChosen)
                 {
                     var eventRoom = FindNode<NEventRoom>(root);
@@ -242,16 +298,22 @@ public static class Harness
                             return;
                         }
 
-                        if (++_optionDelay < EventOptionDelayFrames)
-                        {
-                            return;
-                        }
-
                         if (eventModel.Owner == null)
                         {
                             throw new InvalidOperationException("Vakuu event has no owner.");
                         }
 
+                        _optionDelay++;
+                        if (!_eventReadyLogged && _optionDelay >= ScreenshotDelayFrames)
+                        {
+                            CaptureViewport(tree, "01-native-starting-relic.png");
+                            _eventReadyLogged = true;
+                            GD.Print($"[VakuuHarness] Vakuu event ready; relics={eventModel.Owner.Relics.Count} ids={string.Join(",", eventModel.Owner.Relics.Select(r => r.Id.Entry))}");
+                        }
+                        if (_optionDelay < EventOptionDelayFrames)
+                        {
+                            return;
+                        }
                         _optionChosen = true;
                         _pendingEventModel = eventModel;
                         GD.Print($"[VakuuHarness] choosing Accept; relics before={eventModel.Owner.Relics.Count}");
@@ -276,7 +338,17 @@ public static class Harness
                     {
                         var owner = _pendingEventModel?.Owner
                             ?? throw new InvalidOperationException("Vakuu event owner was lost before proceeding.");
-                        GD.Print($"[VakuuHarness] Accept complete; relics={owner.Relics.Count} ids={string.Join(",", owner.Relics.Select(r => r.Id.Entry))}");
+                        _postAcceptDelay++;
+                        if (!_acceptCompleteLogged && _postAcceptDelay >= ScreenshotDelayFrames)
+                        {
+                            CaptureViewport(tree, "03-native-plus-vakuu-relics.png");
+                            _acceptCompleteLogged = true;
+                            GD.Print($"[VakuuHarness] Accept complete; relics={owner.Relics.Count} ids={string.Join(",", owner.Relics.Select(r => r.Id.Entry))}");
+                        }
+                        if (_postAcceptDelay < PostAcceptDelayFrames)
+                        {
+                            return;
+                        }
                         _proceedTask = NEventRoom.Proceed();
                         return;
                     }
@@ -487,34 +559,6 @@ public static class Harness
                     return;
                 }
 
-                var selection = FindNode<NDeckCardSelectScreen>(root);
-                if (_selectionConfirmed || selection == null)
-                {
-                    return;
-                }
-
-                var selectedCards = typeof(NDeckCardSelectScreen)
-                    .GetField("_selectedCards", BindingFlags.Instance | BindingFlags.NonPublic)
-                    ?.GetValue(selection) as HashSet<CardModel>;
-                var cards = typeof(NDeckCardSelectScreen)
-                    .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
-                    ?.GetValue(selection) as IReadOnlyList<CardModel>;
-                var confirm = selection.GetType().GetMethod(
-                    "CheckIfSelectionComplete", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (selectedCards == null || cards == null || confirm == null || cards.Count < 3)
-                {
-                    throw new InvalidOperationException("Harness could not inspect the deck selection screen.");
-                }
-
-                foreach (var card in cards.Take(3))
-                {
-                    selectedCards.Add(card);
-                }
-                _selectionConfirmed = true;
-                _needFight = true;
-                GD.Print($"[VakuuHarness] confirming first 3 snapshot cards: {string.Join(", ", cards.Take(3).Select(c => c.Id.Entry))}");
-                confirm.Invoke(selection, null);
-                return;
             }
 
             var main = FindNode<NMainMenu>(root);
@@ -563,6 +607,10 @@ public static class Harness
                 throw new MissingMethodException(lobby.GetType().FullName, "BeginRunLocally");
             }
 
+            if (Interlocked.Exchange(ref _runStartRequested, 1) != 0)
+            {
+                return;
+            }
             _started = true;
             GD.Print("[VakuuHarness] starting singleplayer run through StartRunLobby.BeginRunLocally");
             begin.Invoke(lobby, new object?[] { "VAKUU-COMBAT-ACT3-TEST", new List<ModifierModel>() });
@@ -582,6 +630,25 @@ public static class Harness
         }
 
         await eventModel.CurrentOptions[0].Chosen();
+    }
+
+    private static void CaptureViewport(SceneTree tree, string name)
+    {
+        var directory = System.IO.Path.Combine(OS.GetUserDataDir(), "vakuu-harness");
+        System.IO.Directory.CreateDirectory(directory);
+        var path = System.IO.Path.Combine(directory, name);
+        var texture = tree.Root.GetTexture();
+        var image = texture?.GetImage();
+        if (image == null)
+        {
+            throw new InvalidOperationException($"Could not retrieve viewport image for screenshot {name}.");
+        }
+        var error = image.SavePng(path);
+        if (error != Error.Ok)
+        {
+            throw new InvalidOperationException($"Could not save viewport screenshot {name}: {error}");
+        }
+        GD.Print($"[VakuuHarness] screenshot saved name={name} path={path}");
     }
 
     private static Task TravelAsync(NMapScreen map, MapCoord coord)

@@ -12,3 +12,4 @@
 - 2026-08-16 用 agents_rule 配置本 repo（AGENTS.md + CLAUDE.md symlink + docs/ + managed-repos 註冊）
 - 2026-08-20 PR #4 合併並發布 v0.1.7；Workshop 3784362897 已公開更新，含 english／schinese／tchinese metadata。
 - 2026-08-21–22 完成 v0.1.8 Opening Ancient 整合、實機核心流程驗證、Workshop deploy，以及主圖與四張 Steam F12 預覽圖更新；目前可進入後續自訂內容研究。
+- 2026-08-24 準備 v0.1.9：保留五職業原生起始遺物，修正實機 runner 的 profile 還原與 Preserved Fog 等待順序，並重做 Workshop 實機圖。
