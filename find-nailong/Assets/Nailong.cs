@@ -59,7 +59,7 @@ public static class Nailong
         var inside = Color.Lerp(Tongue, MouthIn, Mathf.Clamp01((p.y - 0.645f) / 0.02f));
         c = Color.Lerp(c, inside, Mathf.Clamp01((0.008f - Mouth(p)) / 0.008f));
         c = Color.Lerp(c, Claw, Mathf.Clamp01((0.010f - Claws(m)) / 0.008f));
-        return c.linear; // 專案是 linear 色彩空間，頂點色不會自動轉
+        return c.linear; // 專案是 Gamma 色彩空間，這裡等於把顏色壓深一點；現在的配色是照這個效果調的
     }
 
     static Vector3 ToWorld(Vector3 u) => (u - new Vector3(0, 0.5f, 0)) * Size; // 原點在身體中心

@@ -1,11 +1,11 @@
 # Unity · https://github.com/github/gitignore/blob/main/Unity.gitignore
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-[Uu]ser[Ss]ettings/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
 
 # 體積大、通常不需版控
 [Mm]emoryCaptures/
@@ -16,6 +16,7 @@
 
 # Rider
 [Aa]ssets/Plugins/Editor/JetBrains*
+.idea/
 
 # Visual Studio / VS Code
 .vs/
@@ -67,6 +68,9 @@ crashlytics-build.properties
 .DS_Store
 
 # 發佈輸出、Burst 產生檔、建置 log
-[Rr]elease/
-[Dd]ata/
+/[Rr]elease/
+/[Dd]ata/
 *.log
+# 每次打包都由 Builder 重新產生
+/Assets/Main.unity
+/Assets/Main.unity.meta

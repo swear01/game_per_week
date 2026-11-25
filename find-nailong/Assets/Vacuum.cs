@@ -33,7 +33,7 @@ public static class Vacuum
         c = Color.Lerp(c, Gold, Mathf.Clamp01(1 - Mathf.Abs(p.z - 0.035f) / 0.008f) * Mathf.Clamp01((p.y - 0.0f) / 0.01f)); // 馬達前緣金環
         c = Color.Lerp(c, Red, Mathf.Clamp01((p.z - 0.16f) / 0.01f));
         c = Color.Lerp(c, Dark, Mathf.Clamp01((p.z - 0.53f) / 0.01f));
-        return c.linear;
+        return c.linear; // 同 Nailong.Paint：Gamma 專案裡顏色會深一點，配色照這個調
     }
 
     public static GameObject Build()

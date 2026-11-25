@@ -317,14 +317,14 @@ public class PileGame : MonoBehaviour
         // 小堆：正在掉、剛落地／剛露出來（還沒併回大 buffer）、被吸走的
         System.Array.Clear(dCnt, 0, G);
         foreach (int i in falling) dCnt[grp[i]]++;
-        foreach (int i in extra) if (inExtra[i] && alive[i]) dCnt[grp[i]]++;
+        foreach (int i in extra) if (inExtra[i] && alive[i] && !isFalling[i]) dCnt[grp[i]]++;
         foreach (var f in flies) dCnt[f.g]++;
         int total = 0;
         for (int g = 0; g < G; g++) { dOff[g] = total; total += dCnt[g]; }
         if (total > DynCap) { rebuildNow = true; return; } // 太多了，下一幀直接重排大 buffer
         var cur = (int[])dOff.Clone();
         foreach (int i in falling) dynCpu[cur[grp[i]]++] = mtx[i];
-        foreach (int i in extra) if (inExtra[i] && alive[i]) dynCpu[cur[grp[i]]++] = mtx[i];
+        foreach (int i in extra) if (inExtra[i] && alive[i] && !isFalling[i]) dynCpu[cur[grp[i]]++] = mtx[i];
         var nozzle = NozzleWorld;
         foreach (var f in flies) dynCpu[cur[f.g]++] = Matrix4x4.TRS(f.p, f.q, Vector3.one * (f.burst ? 0.22f : Mathf.Clamp((nozzle - f.p).magnitude / 1.5f, 0.05f, 1))); // 彩帶是小紙片
         if (total == 0) return;
