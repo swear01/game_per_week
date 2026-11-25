@@ -144,7 +144,11 @@ public class PileGame : MonoBehaviour
         startTime = Time.time;
     }
 
-    void OnDestroy() { staticGB?.Release(); dynGB?.Release(); deadGB?.Release(); }
+    void OnDestroy()
+    {
+        staticGB?.Release(); dynGB?.Release(); deadGB?.Release();
+        if (lodMeshes != null) foreach (var set in lodMeshes) foreach (var m in set) Destroy(m); // 按 R 重新載入場景時，執行時建的網格不會自己釋放
+    }
 
     static float Rand(System.Random r, float lo, float hi) => lo + (float)r.NextDouble() * (hi - lo);
 
