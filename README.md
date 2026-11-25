@@ -16,6 +16,7 @@ make test
 |--------|------|
 | `街頭卡牌小混混` | Unity 6（6000.3.x）卡牌對戰原型 |
 | `deck_merger` | Python：牌組／牌池合併與相關工具 |
+| `find-nailong` | Unity 6（6000.6.x）URP：找奶龍，30 萬條飄帶第一人稱小品（[itch](https://swear01.itch.io/find-nailong)） |
 
 **Minecraft 自製 mod／資源包**已獨立為 [swear01/diy_minecraft_mods](https://github.com/swear01/diy_minecraft_mods)（本 repo 不再包含該目錄）。
 
