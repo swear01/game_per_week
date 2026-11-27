@@ -7,12 +7,11 @@ const WHITE := Color("#f0eee6")
 const GOLD := Color("#e4cfa0")
 const MUTED := Color("#a4a096")
 const RULE := Color("#39372e")
-const SAVE_INTERVAL_MS := 10000
+const MIN_WINDOW_POINTS := Vector2i(320, 240)
+const MIN_UI_ZOOM := 0.80
 
 var run := Run.new()
 var replay_locked := false
-var dirty := false
-var last_save := 0
 var text_font := SystemFont.new()
 var numeric_font := SystemFont.new()
 var keyboard_focus := false
@@ -20,6 +19,9 @@ var score_text := ""
 var cost := ""
 var progress_fraction := 0.0
 var planned_score_height := 0.0
+var reference_size := Vector2i.ZERO
+var backing_scale := 1.0
+var detail_content := ""
 
 @onready var advance: Button = $Advance
 @onready var action_label: Label = $Advance/Action
@@ -39,11 +41,7 @@ var planned_score_height := 0.0
 
 func _ready() -> void:
 	OS.low_processor_usage_mode = true
-	get_window().min_size = Vector2i(320, 240)
-	get_tree().auto_accept_quit = false
-	get_window().close_requested.connect(_close_game)
-	run.restore()
-	last_save = Time.get_ticks_msec()
+	_configure_window()
 	_style_controls()
 	grow.pressed.connect(_grow_once)
 	grow.focus_entered.connect(_show_focus)
@@ -52,6 +50,48 @@ func _ready() -> void:
 	resized.connect(_layout)
 	_layout()
 	_refresh()
+
+func _configure_window() -> void:
+	var window := get_window()
+	reference_size = window.content_scale_size
+	# On macOS Godot window coordinates use the maximum backing scale across displays.
+	if DisplayServer.get_name() == "macOS":
+		backing_scale = DisplayServer.screen_get_max_scale()
+
+	if not Engine.is_embedded_in_editor() and DisplayServer.get_name() != "headless":
+		var minimum := Vector2i((Vector2(MIN_WINDOW_POINTS) * backing_scale).round())
+		var usable := DisplayServer.screen_get_usable_rect(window.current_screen)
+		var decoration := (DisplayServer.window_get_size_with_decorations() - window.size).max(Vector2i.ZERO)
+		var available := usable.size - decoration
+		var default_size := window.size == reference_size
+		if available.x > 0 and available.y > 0:
+			minimum = minimum.min(available)
+		if not default_size:
+			minimum = minimum.min(window.size)
+		window.min_size = minimum
+
+		if default_size and window.mode == Window.MODE_WINDOWED and available.x > 0 and available.y > 0:
+			var desired := Vector2(reference_size) * backing_scale
+			var fit := minf(1.0, minf(available.x / desired.x, available.y / desired.y))
+			window.size = Vector2i((desired * fit).floor())
+			if not OS.get_cmdline_args().has("--position"):
+				var slack := usable.size - window.size - decoration
+				window.position = usable.position + Vector2i((Vector2(slack) * 0.5).floor())
+
+	window.size_changed.connect(_update_canvas_size)
+	_update_canvas_size()
+
+func _update_canvas_size() -> void:
+	var window := get_window()
+	if reference_size.x <= 0 or reference_size.y <= 0 or window.size.x <= 0 or window.size.y <= 0:
+		return
+	var in_points := Vector2(window.size) / backing_scale
+	var fit := minf(in_points.x / reference_size.x, in_points.y / reference_size.y)
+	# Smaller windows reflow at a readable scale instead of shrinking the same full-size canvas.
+	var factor := minf(1.0, fit / MIN_UI_ZOOM)
+	var canvas_reference := Vector2i((Vector2(reference_size) * factor).round()).max(Vector2i.ONE)
+	if window.content_scale_size != canvas_reference:
+		window.content_scale_size = canvas_reference
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -96,9 +136,6 @@ func _grow_once() -> void:
 	if run.won:
 		return
 	run.grow()
-	dirty = true
-	if Time.get_ticks_msec() - last_save >= SAVE_INTERVAL_MS:
-		_save()
 	_refresh()
 
 func _advance_once() -> void:
@@ -113,22 +150,11 @@ func _advance_once() -> void:
 			get_tree().create_timer(0.75).timeout.connect(_unlock_replay)
 	else:
 		return
-	dirty = true
-	_save()
 	_refresh()
 
 func _unlock_replay() -> void:
 	replay_locked = false
 	_refresh()
-
-func _save() -> void:
-	if dirty:
-		dirty = not run.save_game()
-		last_save = Time.get_ticks_msec()
-
-func _close_game() -> void:
-	_save()
-	get_tree().quit()
 
 func _refresh() -> void:
 	for item in [grow, stage_label, hint, tower, price, track]:
@@ -165,25 +191,12 @@ func _refresh() -> void:
 	progress.color = GOLD if ready else MUTED
 	progress.size.x = track.size.x * progress_fraction
 	if tower.series != run.stage:
-		tower.mark = _previous_mark()
+		tower.mark = Tower.signature(tower.series, tower.step) if run.stage > 0 else 0
 	tower.show_progress(run.stage, run.step, target)
 	grow.tooltip_text = "空白鍵成長 · F1 詳情"
 	advance.tooltip_text = "Enter 完成 · F1 詳情" if last else "到 %s · F1 詳情" % Growth.title(next_stage)
 	_fit_text()
 	_show_focus()
-
-# Rebuild the previous series' brick signature from the save: π by its recorded step, others by stage.
-func _previous_mark() -> int:
-	if run.previous_title == Growth.title(0):
-		# The opening drawing stops subdividing after six taps.
-		for k in 6:
-			if Growth.value(0, k) == run.previous_record:
-				return Tower.signature(0, k)
-		return Tower.signature(0, 6)
-	for i in range(1, Growth.count()):
-		if Growth.title(i) == run.previous_title:
-			return Tower.signature(i, 0)
-	return 0
 
 func _toggle_details() -> void:
 	if run.won or details.visible:
@@ -207,13 +220,18 @@ func _toggle_details() -> void:
 	var comparison := run.comparison()
 	var comparison_line := "" if comparison.is_empty() else "\n" + comparison
 	var growth_info := "%s%s%s\n\n%s" % [run.display_rule(), stage_record, comparison_line, run.balance_detail()]
+	detail_content = leap_info + "\n\n" + growth_info
+	_layout_details(0)
+	details.show()
+
+func _layout_details(scroll_position: int) -> void:
 	var content_width := minf(size.x - 28.0, 660.0)
-	detail_label.text = _wrap_details(leap_info + "\n\n" + growth_info, content_width - 46.0)
+	var line_width := roundi(content_width - 46.0)
+	detail_label.text = _wrap_details(detail_content, line_width)
 	var available_height := minf(size.y * 0.46, 234.0)
 	var panel_height := minf(available_height, 30.0 + detail_label.text.get_slice_count("\n") * 20.0)
 	_place(details, (size.x - content_width) / 2.0, size.y - panel_height - 14.0, content_width, panel_height)
-	detail_scroll.set_deferred("scroll_vertical", 0)
-	details.show()
+	detail_scroll.set_deferred("scroll_vertical", scroll_position)
 
 func _wrap_details(content: String, limit: float) -> String:
 	var lines := PackedStringArray()
@@ -236,35 +254,39 @@ func _layout() -> void:
 	var width := size.x
 	var height := size.y
 	var margin := clampf(minf(width, height) * 0.06, 13.0, 48.0)
-	var content_width := width - 2.0 * margin
+	var frame_width := minf(width, maxf(1040.0, height * 1.75))
+	var left := (width - frame_width) * 0.5 + margin
+	var content_width := frame_width - 2.0 * margin
 	var header_height := clampf(height * 0.118, 57.0, 96.0)
-	var leap_width := clampf(width * 0.32, 144.0, 330.0)
+	var leap_width := clampf(content_width * 0.34, 144.0, 330.0)
 	var score_top := margin + header_height + clampf(height * 0.045, 10.0, 48.0)
 	var score_height := clampf((height - score_top) * 0.30, 58.0, 178.0)
 	var art_top := score_top + score_height + 26.0
 	var bottom := height - margin
 
-	_place(stage_label, margin, margin, content_width - leap_width - 16.0, header_height)
-	_place(advance, width - margin - leap_width, margin, leap_width, header_height)
+	_place(stage_label, left, margin, content_width - leap_width - 16.0, header_height)
+	_place(advance, left + content_width - leap_width, margin, leap_width, header_height)
 	_place(action_label, 14.0, header_height * 0.13, leap_width - 28.0, header_height * 0.40)
 	_place(price, 14.0, header_height * 0.53, leap_width - 28.0, header_height * 0.29)
 	_place(track, 0.0, header_height - 3.0, leap_width, 3.0)
 	_place(progress, 0.0, 0.0, leap_width * progress_fraction, 3.0)
-	_place(grow, margin, score_top, content_width, bottom - score_top)
+	_place(grow, left, score_top, content_width, bottom - score_top)
 	planned_score_height = roundf(score_height)
 	# Clear the old line minimum before shrinking the label on window resize.
 	score.add_theme_font_size_override("font_size", 23)
 	_place(score, 0.0, 0.0, content_width, planned_score_height)
 	_place(focus_mark, (content_width - 26.0) / 2.0, score_height + 1.0, 26.0, 2.0)
-	_place(hint, margin, score_top + score_height + 7.0, content_width, 18.0)
-	_place(tower, margin, art_top, content_width, maxf(0.0, bottom - art_top))
-	_place(ending, margin, score_top, content_width, bottom - score_top)
-	details.hide()
+	_place(hint, left, score_top + score_height + 7.0, content_width, 18.0)
+	_place(tower, left, art_top, content_width, maxf(0.0, bottom - art_top))
+	_place(ending, left, score_top, content_width, bottom - score_top)
+	if details.visible:
+		_layout_details(detail_scroll.scroll_vertical)
 	_fit_text()
 
 func _place(item: Control, x: float, y: float, width: float, height: float) -> void:
-	item.position = Vector2(roundf(x), roundf(y))
-	item.size = Vector2(roundf(width), roundf(height))
+	var origin := Vector2(x, y).round()
+	item.position = origin
+	item.size = Vector2(x + width, y + height).round() - origin
 
 func _compact(value: String, max_width: float, smallest: int, fallback: String) -> String:
 	if _measure(numeric_font, value, smallest) <= max_width:
@@ -292,7 +314,7 @@ func _fit_text() -> void:
 	score.add_theme_font_size_override("font_size", pixels)
 	score.size.y = planned_score_height
 	var cost_width := maxf(1.0, price.size.x - 4.0)
-	price.text = "" if cost.is_empty() else _debit(_compact(cost, cost_width - 10.0, 15, "Δ(%d)" % run.target()))
+	price.text = "" if cost.is_empty() else _debit(_compact(cost, cost_width - 10.0, 15, run.compact_cost()))
 	price.add_theme_font_size_override("font_size", _font_size(numeric_font, price.text, cost_width, 19, 12))
 	stage_label.add_theme_font_size_override("font_size", _font_size(text_font, stage_label.text, stage_label.size.x, 28, 15))
 	action_label.add_theme_font_size_override("font_size", clampi(floori(advance.size.y * 0.30), 19, 28))

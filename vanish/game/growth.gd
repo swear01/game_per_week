@@ -8,13 +8,13 @@ const STAGES := [
 	["wave", "正弦加法", 48, ""],
 	["log_add", "對數當加量", 55, "加下一個步數的二進位位數。"],
 	["triangular", "三角數爆發", 63, "每下加 1。踩到三角數時，再加當前步數。"],
-	["rule90", "Rule 90 累積亮點", 75, "加一排像素。左右鄰格恰有一格亮時，這一格才亮。"],
-	["primes", "質數步獎勵", 75, "先加 1。下一個步數若是質數，再加這個步數。"],
-	["lattice_circle", "圓內亮格", 75, ""],
-	["sandpile", "一維雪崩", 75, "在原點加一粒。滿兩粒就向左右各丟一粒。每次倒塌再加 1 分。"],
+	["rule90", "Rule 90 累積亮點", 71, "加一排像素。左右鄰格恰有一格亮時，這一格才亮。"],
+	["primes", "質數步獎勵", 79, "先加 1。下一個步數若是質數，再加這個步數。"],
+	["lattice_circle", "圓內亮格", 73, ""],
+	["sandpile", "一維雪崩", 77, "在原點加一粒。滿兩粒就向左右各丟一粒。每次倒塌再加 1 分。"],
 	["square_partitions", "正方形積木包", 75, ""],
-	["partitions", "積木分堆", 78, ""],
-	["plane_partitions", "平面分割", 78, ""],
+	["partitions", "積木分堆", 82, ""],
+	["plane_partitions", "平面分割", 74, ""],
 	["fib", "斐波那契", 70, "把最後兩項相加。"],
 	["double", "固定翻倍", 70, "複製目前的全部。"],
 	["pi_digits", "接上 π 的下一位", 78, ""],
@@ -79,6 +79,12 @@ static func safe_target(stage: int, reduction: int) -> int:
 				return candidate
 		return original
 	return earliest
+
+
+# Starting with 11² blocks keeps the price of square-only partitions above
+# the sandpile gate even with the three-tap discount.
+static func square_partition_size(step: int) -> int:
+	return 121 + step
 
 
 static func value(stage: int, step: int) -> String:
@@ -147,9 +153,10 @@ static func value(stage: int, step: int) -> String:
 			@warning_ignore("integer_division")
 			return str(n + radius * (radius + 1) * (radius * 2 + 1) / 6)
 		"square_partitions":
-			if n > 397:
-				return "平方分割(%d)" % (n + 3)
-			return str(_partitions(n + 3, true))
+			var blocks := square_partition_size(n)
+			if blocks > 400:
+				return "平方分割(%d)" % blocks
+			return str(_partitions(blocks, true))
 		"partitions":
 			if n > 397:
 				return "p(%d)" % (n + 3)
@@ -273,7 +280,7 @@ static func rule(stage: int, step: int) -> String:
 		"lattice_circle":
 			return "半徑 %d → %d，重數圓內和圓周上的格點。" % [n + 1, n + 2]
 		"square_partitions":
-			return "%d → %d 塊，只准用 1、4、9、16…塊一包。" % [n + 3, n + 4]
+			return "%d → %d 塊，只准用 1、4、9、16…塊一包。" % [square_partition_size(n), square_partition_size(n + 1)]
 		"partitions":
 			return "%d → %d 塊，可用任何整數包，順序不計。" % [n + 3, n + 4]
 		"plane_partitions":
