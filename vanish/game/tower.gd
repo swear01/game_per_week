@@ -193,64 +193,145 @@ func _shape(count: int, now: int, target: int, before: int, e: float) -> void:
 		Large.draw(self, Growth.key(count), now, e, area)
 
 func _draw_circle(now: int, before: int, e: float) -> void:
-	var radius := floorf(minf(size.x * 0.36, size.y * 0.44))
-	var middle := Vector2(floorf(size.x / 2.0), floorf(size.y / 2.0))
-	var pixel := maxf(2.0, floorf(radius / 28.0))
-	var sides := 2 << mini(now, 6)
-	draw_arc(middle, radius, 0.0, TAU, 100, OUTLINE, 1.0)
-	var outline := PackedVector2Array()
-	for i in range(sides + 1):
-		var coordinate := (Vector2.from_angle(TAU * float(i) / sides) * (radius / pixel)).round() * pixel
-		outline.append(middle + coordinate)
-	if before < now and 2 << mini(before, 6) < sides:
-		# New vertices start on the old chords' midpoints and slide out to the circle.
-		for i in range(1, sides, 2):
-			outline[i] = ((outline[i - 1] + outline[i + 1]) / 2.0).lerp(outline[i], e)
-	var edge := INK.lerp(WHITE, 0.65 * (1.0 - e)) if before < now else INK
-	for i in range(sides):
-		_pixel_line(outline[i], outline[i + 1], pixel, edge)
-	if sides <= 8:
-		for i in range(sides):
-			draw_rect(Rect2(outline[i] - Vector2.ONE * pixel, Vector2.ONE * pixel * 2.0), INK)
-	# The stationary center is an anchor while the old chord splits in two.
-	draw_rect(Rect2(middle - Vector2.ONE * pixel / 2.0, Vector2.ONE * pixel), DIM)
+	var area := _area()
+	var middle := area.get_center()
+	var radius := minf(area.size.x * 0.36, area.size.y * 0.46)
+	# Once chords are indistinguishable at pixel scale, keep the whole circle
+	# in view and magnify the actual operation on one of its edges.
+	if now > 3:
+		var opening := e if before == 3 else 1.0
+		middle.x = lerpf(middle.x, area.position.x + area.size.x * 0.25, opening)
+		radius = lerpf(radius, minf(radius, area.size.x * 0.18), opening)
+		var source := middle + radius * Vector2.from_angle(-PI / 4)
+		var focus := area.position + area.size * Vector2(0.54, 0.55)
+		if opening > 0.65:
+			draw_dashed_line(source, focus, OUTLINE, 1.0, 4.0)
+			draw_circle(source, 2.3, WHITE, true, -1.0, true)
+		_draw_bisection(area, now, e)
+	draw_arc(middle, radius, 0.0, TAU, 128, OUTLINE, 1.2, true)
+	# Once the polygon's error is subpixel, its overview is its limiting
+	# circle. The local diagram continues to show the actual subdivision.
+	var edge := INK.lerp(WHITE, 0.40 * (1.0 - e)) if before < now else INK
+	if now > 6:
+		draw_arc(middle, radius, 0.0, TAU, 160, edge, 2.0, true)
+	else:
+		var sides := 2 << now
+		var outline := PackedVector2Array()
+		for i in range(sides + 1):
+			outline.append(middle + Vector2.from_angle(TAU * i / sides) * radius)
+		if before < now:
+			for i in range(1, sides, 2):
+				outline[i] = ((outline[i - 1] + outline[i + 1]) * 0.5).lerp(outline[i], e)
+		draw_polyline(outline, edge, 2.2, true)
+		if sides <= 8:
+			for i in sides:
+				draw_circle(outline[i], 2.8, WHITE, true, -1.0, true)
+	draw_circle(middle, 1.4, DIM, true, -1.0, true)
 
-func _pixel_line(from: Vector2, to: Vector2, pixel: float, edge: Color) -> void:
-	var steps := maxi(1, ceili(maxf(absf(to.x - from.x), absf(to.y - from.y)) / pixel))
-	for i in range(steps + 1):
-		var point := (from.lerp(to, float(i) / steps) / pixel).round() * pixel
-		draw_rect(Rect2(point, Vector2.ONE * pixel), edge)
+# In the detail the horizontal chord and its sagitta are normalized separately.
+func _draw_bisection(area: Rect2, now: int, e: float) -> void:
+	var view := Rect2(area.position + area.size * Vector2(0.54, 0.18), area.size * Vector2(0.42, 0.60))
+	var y := view.position.y + view.size.y * 0.61
+	var rise := maxf(3.0, view.size.y * 0.44)
+	var left := Vector2(view.position.x, y)
+	var right := Vector2(view.end.x, y)
+	var crest := Vector2(view.get_center().x, y - rise)
+	var half_angle := PI * pow(0.5, now)
+	var cosine := cos(half_angle)
+	var sine := sin(half_angle)
+	var arc := PackedVector2Array()
+	for i in 25:
+		var x := (i - 12.0) / 12.0
+		# Rationalized circular sagitta stays well-conditioned even at radii
+		# where directly subtracting cosines would give zero.
+		var height := (1.0 - x * x) * (1.0 + cosine) / (sqrt(1.0 - x * x * sine * sine) + cosine)
+		arc.append(Vector2(lerpf(left.x, right.x, i / 24.0), y - rise * height))
+	draw_polyline(arc, OUTLINE, 1.2, true)
+	draw_line(left, right, HATCH, 1.0, true)
+	var midpoint := ((left + right) * 0.5).lerp(crest, e)
+	draw_line(left, midpoint, INK, 2.0, true)
+	draw_line(midpoint, right, INK, 2.0, true)
+	draw_circle(midpoint, 2.4, WHITE, true, -1.0, true)
+	_math_label("2^%d 邊 · 弦高放大" % (now + 1), view, y)
 
-# Keep the newest layers in view after the gate. Their height still represents
-# the actual increment; a subpixel layer enters as a single growing scanline.
+func _math_label(value: String, area: Rect2, y: float) -> void:
+	var font := get_theme_default_font()
+	var pixels := clampi(floori(area.size.y * 0.20), 11, 20)
+	while pixels > 8 and font.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels).x > area.size.x:
+		pixels -= 1
+	var diagram_area := _area()
+	var baseline := clampf(y + font.get_ascent(pixels) + 4, diagram_area.position.y + font.get_ascent(pixels), diagram_area.end.y - font.get_descent(pixels))
+	draw_string(font, Vector2(area.position.x, baseline).round(), value, HORIZONTAL_ALIGNMENT_CENTER, area.size.x, pixels, DIM)
+
+# At the gate the whole stack fits. Beyond it the viewport zooms out;
+# older layers remain in the stack even when their boundaries share a pixel.
 func _draw_stack(now: int, target: int, before: int, e: float, root: bool) -> void:
-	var unit := float(base_y - 4) / _sum(target, root)
+	if now == 0:
+		return
+	var area := _area()
+	var latest := 1.0 / (sqrt(float(now)) if root else float(now))
+	var total := _sum(now, root)
+	if before < now:
+		total -= latest * (1.0 - e)
+	var unit := (base_y - area.position.y) / maxf(_sum(target, root), total)
 	var width := _stack_width()
 	var x := center - width / 2
-	var y := float(base_y)
-	var first := maxi(1, now - target + 1)
-	var entering := before < now and e < 1.0
-	if entering and first > 1:
-		var departing := first - 1
-		var tail_height := maxf(1.0, roundf(unit / (sqrt(departing) if root else departing)))
-		y -= tail_height * (1.0 - e)
-		draw_rect(Rect2(x, y, width, base_y - y), DIM)
-	for k in range(first, now + 1):
-		if y <= 0.0:
+	var top := base_y - roundf(total * unit)
+	if top < base_y:
+		draw_rect(Rect2(x, top, width, base_y - top), DIM)
+	var subtotal := 0.0
+	var last_y := float(base_y)
+	for k in range(1, mini(now - 1, 96) + 1):
+		subtotal += 1.0 / (sqrt(float(k)) if root else float(k))
+		var y := base_y - roundf(subtotal * unit)
+		if last_y - y > 2:
+			draw_line(Vector2(x, y), Vector2(x + width - 1, y), INK)
+		last_y = y
+	# After individual boundaries crowd together, mark cumulative totals at
+	# 128, 256, ... layers. This keeps the overview readable as it zooms out.
+	var boundary := 128
+	while boundary < now:
+		var y := base_y - roundf(_sum(boundary, root) * unit)
+		if last_y - y > 2:
+			draw_line(Vector2(x, y), Vector2(x + width - 1, y), HATCH)
+			last_y = y
+		if boundary > (now >> 1):
 			break
-		var height := maxf(1.0, roundf(unit / (sqrt(k) if root else k)))
-		var top_width := width
-		if k == now and entering:
-			height = maxf(1.0, roundf(height * e))
-			top_width = maxi(1, roundi(width * e))
-		height = minf(y, height)
-		y -= height
-		draw_rect(Rect2(x, y, top_width, height), INK if k == now else DIM)
-		if height > 2.0:
-			draw_rect(Rect2(x, y, top_width, 1), WHITE if k == now else INK)
+		boundary *= 2
+	var height := minf(base_y - top, maxf(1.0, roundf(unit * latest * e)))
+	if height > 0:
+		draw_rect(Rect2(x, top, width, height), INK)
+		draw_line(Vector2(x, top), Vector2(x + width - 1, top), WHITE)
+	if now > target:
+		# Draw the newest layer at its own scale, even for subpixel increments.
+		var inset := Rect2(area.position + area.size * Vector2(0.67, 0.27), area.size * Vector2(0.30, 0.43))
+		var mid_y := inset.get_center().y
+		draw_dashed_line(Vector2(x + width, top), Vector2(inset.position.x, mid_y), OUTLINE, 1.0, 4.0)
+		var label_y := clampf(inset.size.y * 0.16, 3.0, 12.0)
+		var previous := 1.0 / (sqrt(now - 1.0) if root else (now - 1.0))
+		var reference_height := unit * latest
+		var power := maxi(0, ceili(log(label_y / reference_height) / log(2.0)))
+		var prev_power := maxi(0, ceili(log(label_y / (unit * previous)) / log(2.0)))
+		var zoom := pow(2.0, lerpf(prev_power, power, e))
+		var older_h := previous * unit * zoom
+		var newer_h := reference_height * zoom
+		draw_rect(Rect2(inset.position.x, mid_y, inset.size.x, older_h), HATCH)
+		if e > 0.0:
+			draw_rect(Rect2(inset.position.x, mid_y - newer_h - 1.0, inset.size.x * e, newer_h), INK)
+		var scale_text := "×%s" % (str(roundi(zoom)) if zoom < 1.0e15 else "2^%d" % power)
+		_math_label(scale_text, inset, mid_y - newer_h - 27.0)
+		_math_label(("1/√%d" if root else "1/%d") % now, inset, mid_y + older_h)
 
+# Only for screen geometry: integrate the tail at cell midpoints. Work is
+# bounded even if a player spends the entire session in one series.
 func _sum(n: int, root: bool) -> float:
+	var terms := mini(n, 96)
 	var total := 0.0
-	for k in range(1, n + 1):
-		total += 1.0 / (sqrt(k) if root else k)
+	for k in range(1, terms + 1):
+		total += 1.0 / (sqrt(float(k)) if root else float(k))
+	if n > terms:
+		if root:
+			total += 2.0 * (sqrt(n + 0.5) - sqrt(terms + 0.5))
+		else:
+			total += log((n + 0.5) / (terms + 0.5))
 	return total
