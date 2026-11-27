@@ -21,16 +21,16 @@ static var _folded := PackedInt64Array([0, 1])
 static func draw(c: CanvasItem, key: String, now: int, before: int, e: float, a: Rect2) -> void:
 	match key:
 		"golomb": golomb(c, now, before, e, a)
-		"wave": wave(c, now, before, e, a)
-		"log_add": log_add(c, now, before, e, a)
-		"triangular": triangular(c, now, before, e, a)
-		"rule90": rule90(c, now, before, e, a)
-		"primes": primes(c, now, before, e, a)
+		"wave": wave(c, now, a)
+		"log_add": log_add(c, now, a)
+		"triangular": triangular(c, now, a)
+		"rule90": rule90(c, now, a)
+		"primes": primes(c, now, a)
 		"lattice_circle": lattice(c, now, before, e, a)
 		"sandpile": sandpile(c, now, before, e, a)
-		"square_partitions": squares(c, Growth.square_partition_size(now), e, a)
-		"partitions": ferrers(c, now + 3, e, a)
-		"plane_partitions": plane(c, now + 3, e, a)
+		"square_partitions": squares(c, Growth.square_partition_size(now), a)
+		"partitions": ferrers(c, now + 3, a)
+		"plane_partitions": plane(c, now + 3, a)
 		_: return
 
 static func _box(c: CanvasItem, x: float, y: float, w: float, h: float, color: Color) -> void:
@@ -175,12 +175,9 @@ static func _sand(x: int, k: int, m: int) -> int:
 		return 0
 	return 1 if ax <= m + 1 else 0
 
-static func _g(i: int) -> int:
-	return _golomb_run(i)[0]
-
 # S(k) = sum G(i); T(k) = sum i*G(i) = S(S(k)); U(k) = T(S(k)).
 # The folded prefix locates the run using two short inverse searches.
-static func _golomb_run(n: int) -> PackedInt64Array:
+static func _g(n: int) -> int:
 	while _folded[-1] < n:
 		var j := _golomb.size()
 		var g := 1 + _golomb[j - _golomb[_golomb[j - 1]]]
@@ -203,39 +200,65 @@ static func _golomb_run(n: int) -> PackedInt64Array:
 			high = mid
 	var j := skip + low
 	var rem := offset - k * ((low - 1) * skip + _tri(low - 1)) - 1
-	var value := _weighted[k - 1] + k * (low - 1) + 1 + rem / j
-	return PackedInt64Array([value, rem % j, j])
+	return _weighted[k - 1] + k * (low - 1) + 1 + rem / j
 
-# The tape: cell n holds G(n), and runs of equal cells are exactly G(v) long. The head reads one cell further each press.
+# A fixed-height strip. Runs share a shade and each visible cell shows its actual term.
 static func golomb(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
 	var head := mini(now, INT_MAX - 4) + 1
-	var cw := clampf(floorf(a.size.x / 40.0), 4.0, 12.0)
-	var hi := head + 3
-	var lo := maxi(1, hi - maxi(8, int(a.size.x / cw) - 1) + 1)
-	var floor_value := _g(lo) - 1
-	var unit := minf(12.0, a.size.y * 0.78 / maxi(1, _g(hi) - floor_value))
-	var x0 := a.get_center().x - (hi - lo + 1) * cw / 2.0
-	var slide := (1.0 - e) * cw if before < now and lo > 1 else 0.0
-	for i in range(lo, hi + 1):
-		var v := _g(i)
-		var h := (v - floor_value) * unit
-		var x := clampf(x0 + (i - lo) * cw + slide, a.position.x, a.end.x - cw)
-		if i > head:
-			c.draw_rect(Rect2(roundf(x), a.end.y - h, cw - 1.0, 1), FILL)
-			continue
-		if i == head and before < now:
-			h *= e
-		_box(c, x, a.end.y - h, cw - 1.0, h, INK if i == head else (DIM if v % 2 == 1 else OUTLINE))
+	var cw := clampf(floorf(a.size.x / 13.0), 20.0, 34.0)
+	var height := minf(32.0, a.size.y * 0.52)
+	var slots := maxi(1, floori(a.size.x / cw))
+	var hi := head + mini(3, slots - 1)
+	var lo := maxi(1, hi - slots + 1)
+	var font := ThemeDB.fallback_font
+	var font_size := 14
+	var x0 := a.get_center().x - slots * cw / 2.0
+	var y := a.get_center().y - height * 0.5
+	var baseline := y + (height - font.get_height(font_size)) * 0.5 + font.get_ascent(font_size)
+	# Paper travels horizontally only when the head would leave its window.
+	var scrolling := lo > 1 and before < now and e < 1.0
+	var shift := (1.0 - e) if scrolling else 0.0
+	var tape := Rect2(x0, y, slots * cw, height)
+	var previous := _g(lo - 1 if scrolling else lo)
+	for relative in range(-1 if scrolling else 0, hi - lo + 1):
+		var i := lo + relative
+		var value := _g(i)
+		var x := x0 + (relative + shift) * cw
+		var color := FILL if value & 1 else SHADE
 		if i == head:
-			_box(c, x, a.end.y - h - 4.0, cw - 1.0, 2.0, WHITE)
-			var run_data := _golomb_run(i)
-			var progress := float(run_data[1] + 1) / run_data[2]
-			_box(c, x, a.end.y - h - 6.0, cw * progress, 1.0, DIM)
-		if i & 1:
-			_box(c, x, a.end.y - 1.0, 1.0, 1.0, SHADE)
+			color = INK
+		elif i > head:
+			color = color.darkened(0.35)
+		var visible := Rect2(x, y, cw - 1.0, height).intersection(tape)
+		if visible.has_area():
+			c.draw_rect(visible, color)
+		if value != previous and x > tape.position.x and x < tape.end.x:
+			c.draw_line(Vector2(x - 0.5, y - 2.0), Vector2(x - 0.5, y + height + 2.0), DIM, 1.0)
+		previous = value
+
+		var term := str(value)
+		var width := font.get_string_size(term, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		if width <= cw - 4.0:
+			var text_x := x + (cw - width) * 0.5
+			if text_x < tape.position.x or text_x + width > tape.end.x:
+				continue
+			var ink := SHADE if i == head else (DIM if i > head else WHITE)
+			c.draw_string(font, Vector2(text_x, baseline), term, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ink)
+		elif i == head:
+			var label := "G(%d) = %d" % [i, value]
+			var label_size := font_size
+			var label_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x
+			if font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > a.size.x:
+				label = term
+				label_width = width
+			while label_width > a.size.x and label_size > 8:
+				label_size -= 1
+				label_width = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x
+			var label_x := maxf(a.position.x, a.get_center().x - label_width * 0.5)
+			c.draw_string(font, Vector2(label_x, y - 5.0), label, HORIZONTAL_ALIGNMENT_LEFT, a.size.x, label_size, INK)
 
 # Eight increments around a wave. Columns fill as the lap goes; each finished lap leaves a block on the top row.
-static func wave(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+static func wave(c: CanvasItem, now: int, a: Rect2) -> void:
 	var cw := clampf(floorf(a.size.x / 12.0), 6.0, 30.0)
 	var unit := clampf(floorf(a.size.y * 0.5 / 5.0), 2.0, 16.0)
 	var x0 := a.get_center().x - cw * 4.0
@@ -247,7 +270,7 @@ static func wave(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> vo
 		var x := x0 + i * cw
 		tops.append(Vector2(x + (cw - 1.0) / 2.0, a.end.y - h))
 		if i == applied:
-			_box(c, x, a.end.y - h * (e if before < now else 1.0), cw - 1.0, h * (e if before < now else 1.0), INK)
+			_box(c, x, a.end.y - h, cw - 1.0, h, INK)
 		elif lap_full or i < now % 8:
 			_box(c, x, a.end.y - h, cw - 1.0, h, DIM)
 		else:
@@ -270,11 +293,10 @@ static func wave(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> vo
 	var shown := laps
 	for i in range(shown):
 		var newest := i == shown - 1 and lap_full
-		var side := 5.0 * (e if newest and before < now else 1.0)
-		_box(c, a.get_center().x - shown * 3.5 + i * 7.0, a.position.y, side, side, INK if newest else DIM)
+		_box(c, a.get_center().x - shown * 3.5 + i * 7.0, a.position.y, 5.0, 5.0, INK if newest else DIM)
 
 # The number being added is the binary length of the step. Bits show it as a counter; the bars show how slowly it climbs.
-static func log_add(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+static func log_add(c: CanvasItem, now: int, a: Rect2) -> void:
 	var bits := maxi(1, Growth._bit_length(now))
 	var cs := minf(a.size.x / (bits + 2.0), 26.0)
 	var flipped := now ^ (now - 1) if now > 0 else 0
@@ -284,37 +306,33 @@ static func log_add(c: CanvasItem, now: int, before: int, e: float, a: Rect2) ->
 		var bit := bits - 1 - b
 		var on := (now >> bit) & 1 == 1
 		var flip := (flipped >> bit) & 1 == 1
-		var side := maxf(1.0, cs - 1.0) * (e if flip and before < now else 1.0)
-		var at := Vector2(x0 + b * cs + (cs - 1.0 - side) / 2.0, y + (cs - 1.0 - side) / 2.0)
+		var side := maxf(1.0, cs - 1.0)
+		var x := x0 + b * cs
 		if on:
-			_box(c, at.x, at.y, side, side, INK if flip else DIM)
+			_box(c, x, y, side, side, INK if flip else DIM)
 		else:
-			c.draw_rect(Rect2(roundf(at.x), roundf(at.y), side, side), INK if flip else OUTLINE, false, 1.0)
+			c.draw_rect(Rect2(roundf(x), roundf(y), side, side), INK if flip else OUTLINE, false, 1.0)
 	var room := y - 6.0 - a.position.y
 	if room < 8.0 or now < 1:
 		return
 	var unit := minf(room / bits, 10.0)
 	var bw := 5.0
 	var count := mini(now, int(a.size.x / bw) - 2)
-	var slide := (1.0 - e) * bw if before < now and now > count else 0.0
 	for i in range(count):
 		var step := now - count + 1 + i
 		var len := Growth._bit_length(step)
-		var h := len * unit * (e if step == now and before < now else 1.0)
+		var h := len * unit
 		var jump := step == now or len != Growth._bit_length(step - 1)
-		_box(c, a.get_center().x - count * bw / 2.0 + i * bw + slide, y - 5.0 - h, bw - 1.0, h, INK if jump else DIM)
+		_box(c, a.get_center().x - count * bw / 2.0 + i * bw, y - 5.0 - h, bw - 1.0, h, INK if jump else DIM)
 
-# 1 dot per press; row k completes at T_k and then bursts (the row flashes). Windowed by rows and compressed by columns.
-static func triangular(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+# One dot per press. Row k completes at T_k. Narrow windows combine adjacent dots into fractional-width bars.
+static func triangular(c: CanvasItem, now: int, a: Rect2) -> void:
 	var t := _tri_root(now)
 	var filled := now - _tri(t)
 	var hi := t + (1 if filled > 0 else 0)
 	var p := clampf(floorf(minf(a.size.x, a.size.y) / maxf(1.0, hi)), 3.0, 14.0)
 	var f := ceili(float(maxi(1, hi)) / maxi(4, int(a.size.x / p))) # dots per drawn cell
-	if f > 1:
-		a = _coordinates(c, a, "行 %d · 列 %d" % [hi, filled if filled > 0 else t])
 	var lo := maxi(1, hi - int(a.size.y / p) + 1)
-	var burst := filled == 0 and now > 0 and before < now
 	for k in range(lo, hi + 1):
 		var len := k if k <= t else filled
 		var slots := ceili(float(k) / f)
@@ -326,37 +344,31 @@ static func triangular(c: CanvasItem, now: int, before: int, e: float, a: Rect2)
 			if i >= lit:
 				c.draw_rect(Rect2(roundf(x0 + i * p), roundf(y), p - 1.0, p - 1.0), SHADE)
 				continue
-			var color := INK if newest else DIM
-			if burst and k == t:
-				color = INK.lerp(DIM, e)
 			var width := p - 1.0
 			if len < k:
 				width *= clampf(float(len - i * f) / mini(f, k - i * f), 0.0, 1.0)
-			var rise := (p - 1.0) * (e if newest and before < now and not burst else 1.0)
-			_box(c, x0 + i * p, y + p - 1.0 - rise, width, rise, color)
+			c.draw_rect(Rect2(x0 + i * p, y, width, p - 1.0), INK if newest else DIM)
 	if now == 0:
 		_box(c, a.get_center().x - 2.0, a.end.y - 4.0, 3.0, 3.0, SHADE)
 
 # Row r of Rule 90 from one lit cell: cell (r, x) is lit iff C(r, (r+x)/2) is odd, i.e. j & r == j.
 # Once the triangle outgrows the stage the window clings to the newest row's left corner (the centre of a wide row is mostly empty).
-static func rule90(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+static func rule90(c: CanvasItem, now: int, a: Rect2) -> void:
 	var p := clampf(floorf(minf(a.size.x / (2.0 * now + 3.0), a.size.y / (now + 1.0))), 4.0 if a.size.x >= 240.0 else 3.0, 12.0)
 	var cols := clampi(int(a.size.x / p), 1, 120)
 	var rows := mini(clampi(int(a.size.y / p), 1, 68), cols)
 	var lo := maxi(0, now - rows + 1)
 	var used := mini(int(a.size.x / p), 2 * mini(now, 60) + 1)
 	var left := a.get_center().x - used * p * 0.5
-	var slide := (1.0 - e) * p if before < now and lo > 0 else 0.0
 	for offset in range(now - lo, -1, -1):
 		var row := now - offset
-		var y := a.end.y - (offset + 1) * p + slide
-		var side := (p - 1.0) * (e if offset == 0 and before < now else 1.0)
+		var y := a.end.y - (offset + 1) * p
 		for j in range(mini(row, (cols - 1 - offset) / 2) + 1):
 			if (row & j) == j:
-				_box(c, left + (offset + 2 * j) * p, y, p - 1.0, side, INK if offset == 0 else DIM)
+				_box(c, left + (offset + 2 * j) * p, y, p - 1.0, p - 1.0, INK if offset == 0 else DIM)
 
 # The step grid: primes are the full bright cells (each adds its own number), other steps are small notes.
-static func primes(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+static func primes(c: CanvasItem, now: int, a: Rect2) -> void:
 	var p := clampf(floorf(a.size.x / 16.0), 8.0, 20.0)
 	var cols := clampi(int(a.size.x / p), 6, 16)
 	var rows := clampi(int(a.size.y / p), 2, 8)
@@ -375,14 +387,8 @@ static func primes(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> 
 		var prime := _prime(i)
 		var current := i == now
 		var side := p - 1.0 if prime else maxf(2.0, floorf(p / 3.0))
-		var fresh := current and before < now
-		if fresh:
-			side *= e
 		_box(c, at.x + (p - 1.0 - side) / 2.0, at.y + (p - 1.0 - side) / 2.0, side, side, (WHITE if current and prime else INK) if prime else (INK if current else DIM))
-		if fresh and prime: # a burst: the added number ripples out from the cell
-			var spread := (1.0 - e) * p
-			var ring := Rect2(at - Vector2.ONE * spread, Vector2.ONE * (p - 1.0 + 2.0 * spread))
-			c.draw_rect(ring.intersection(a), INK.lerp(Color.BLACK, e), false, 1.0)
+
 
 static func _prime(n: int) -> bool:
 	if n < 2:
@@ -443,7 +449,7 @@ static func _tri_root(s: int) -> int:
 	return k
 
 # Ferrers shape of one representative partition of s: rows k, k-1, … 1 with the leftover blocks added one per row. Each press adds one block.
-static func ferrers(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
+static func ferrers(c: CanvasItem, s: int, a: Rect2) -> void:
 	var k := maxi(1, _tri_root(s))
 	var extra := s - _tri(k)
 	var p := minf(16.0, floorf(minf(a.size.x, a.size.y) / (k + 1.0)))
@@ -453,7 +459,6 @@ static func ferrers(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
 	var new_col := k - extra + 1 if extra > 0 else 0
 	if p < 2.0 or k > 64:
 		# Sample real rows and mark the actual new block in a scaled overview.
-		a = _coordinates(c, a, "行 %d · 列 %d" % [new_row, new_col + 1])
 		var side := minf(a.size.x, a.size.y) - 2.0
 		var left := a.get_center().x - side * 0.5
 		var rows := clampi(floori(side / 3.0), 1, 64)
@@ -463,7 +468,7 @@ static func ferrers(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
 			var y := a.end.y - side + i * side / rows
 			_box(c, left, y, float(length) * side / (k + 1.0), side / rows - 1.0, DIM)
 		var at := Vector2(left + new_col * side / (k + 1.0), a.end.y - side + (new_row - 1) * side / k)
-		c.draw_circle(at, 1.0 + e, INK)
+		c.draw_circle(at, 1.5, INK)
 		return
 	for row in range(1, k + 1):
 		var length := k + 1 - row + (1 if row <= extra else 0)
@@ -471,15 +476,14 @@ static func ferrers(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
 		if p >= 4.0:
 			for col in range(length):
 				var newest := row == new_row and col == new_col
-				var side := (p - 1.0) * (e if newest else 1.0)
-				_box(c, x0 + col * p, y + (p - 1.0 - side) / 2.0, side, side, INK if newest else DIM)
+				_box(c, x0 + col * p, y, p - 1.0, p - 1.0, INK if newest else DIM)
 		else:
 			_box(c, x0, y, length * p - 1.0, p - 1.0, DIM)
 			if row == new_row:
 				_box(c, x0 + new_col * p, y, p - 1.0, p - 1.0, INK)
 
-# Blocks are packed into the biggest squares that fit (1, 4, 9, …); the newest block rides on the last package.
-static func squares(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
+# Blocks are repacked into the biggest squares that fit (1, 4, 9, …).
+static func squares(c: CanvasItem, s: int, a: Rect2) -> void:
 	var sides: Array[int] = []
 	var rest := maxi(0, s)
 	var total := 0
@@ -497,27 +501,15 @@ static func squares(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
 	var x := a.get_center().x - (total * u + gap * (sides.size() - 1)) / 2.0
 	for index in range(sides.size()):
 		var px := sides[index] * u
-		var last := index == sides.size() - 1
 		c.draw_rect(Rect2(x, a.end.y - px, px, px), DIM if index % 2 == 0 else OUTLINE)
 		if u >= 4.0:
 			for line in range(1, sides[index]):
 				c.draw_rect(Rect2(roundf(x + line * u), a.end.y - px, 1, px), SHADE)
 				c.draw_rect(Rect2(x, roundf(a.end.y - px + line * u), px, 1), SHADE)
-		if last: # newest unit block: top-right cell of the last package, dropping in on the tap
-			if u >= 2.0:
-				var side := (u - 1.0) * e
-				c.draw_rect(Rect2(x + px - u, a.end.y - px, side, side), INK)
-			else:
-				# Keep the true location visible when an individual block is subpixel.
-				var at := Vector2(x + px - u, a.end.y - px)
-				var radius := 2.0 + 2.0 * e
-				var inset := a.grow(-radius)
-				at = at.clamp(inset.position, inset.end)
-				c.draw_circle(at, radius, INK, true, -1.0, true)
 		x += px + gap
 
 # Cubes are added in order of i+j+k (every prefix is a valid plane partition: heights never rise along either axis).
-static func plane(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
+static func plane(c: CanvasItem, s: int, a: Rect2) -> void:
 	var d := floori(pow(6.0 * s, 1.0 / 3.0))
 	while _tetra(d) < 0 or _tetra(d) > s:
 		d -= 1
@@ -560,8 +552,6 @@ static func plane(c: CanvasItem, s: int, e: float, a: Rect2) -> void:
 			var fresh := _diagonal_start(d, i) + j < rem
 			var newest := i == newest_i and j == newest_j
 			var z := float(d - sum + int(fresh) - cut)
-			if newest:
-				z -= 1.0 - e
 			if z <= 0.001:
 				continue
 			var local_i := i - i0
