@@ -16,8 +16,9 @@ const LEAP_MS := 400.0
 const COMPRESS_MS := 150.0
 const TAP_MS := 130.0
 # Both reciprocal sums use the same fixed linear scale at a given viewport size.
-const STACK_RANGE := 12.0
+const STACK_UNITS := 12.0
 
+var stack_headroom := 0.0 # Space from the diagram to the top of the play screen.
 var series := 0
 var step := 0
 var mark := 0 # notches on the newest base brick; 0 = none. Set by main before show_progress.
@@ -206,14 +207,15 @@ func _draw_stack(now: int, before: int, e: float, root: bool) -> void:
 	if now == 0:
 		return
 	var area := _area()
-	var unit := (base_y - area.position.y) / STACK_RANGE
+	var unit := (base_y - area.position.y) / STACK_UNITS
 	var total := _sum(now, root)
 	if before < now:
 		var increment := 1.0 / (sqrt(float(now)) if root else float(now))
 		total -= increment * (1.0 - e)
 	var width := _stack_width()
 	var x := center - width / 2
-	var height := minf(total, STACK_RANGE) * unit
+	var top := -stack_headroom
+	var height := minf(total * unit, base_y - top)
 	if height > 0.0:
 		draw_rect(Rect2(x, base_y - height, width, height), DIM)
 	var y := float(base_y)
@@ -221,7 +223,7 @@ func _draw_stack(now: int, before: int, e: float, root: bool) -> void:
 	for k in range(1, complete + 1):
 		var thickness := unit / (sqrt(float(k)) if root else float(k))
 		y -= thickness
-		if thickness < 2.0 or y <= area.position.y:
+		if thickness < 2.0 or y <= top:
 			break
 		draw_line(Vector2(x, y), Vector2(x + width, y), INK, 1.0)
 
