@@ -192,6 +192,7 @@ func _refresh() -> void:
 	progress.size.x = track.size.x * progress_fraction
 	if tower.series != run.stage:
 		tower.mark = Tower.signature(tower.series, tower.step) if run.stage > 0 else 0
+	tower.clip_contents = Growth.key(run.stage) not in ["harmonic", "inverse_sqrt"]
 	tower.show_progress(run.stage, run.step, target)
 	grow.tooltip_text = "空白鍵成長 · F1 詳情"
 	advance.tooltip_text = "Enter 完成 · F1 詳情" if last else "到 %s · F1 詳情" % Growth.title(next_stage)
@@ -278,6 +279,8 @@ func _layout() -> void:
 	_place(focus_mark, (content_width - 26.0) / 2.0, score_height + 1.0, 26.0, 2.0)
 	_place(hint, left, score_top + score_height + 7.0, content_width, 18.0)
 	_place(tower, left, art_top, content_width, maxf(0.0, bottom - art_top))
+	tower.stack_headroom = tower.position.y
+	tower.queue_redraw()
 	_place(ending, left, score_top, content_width, bottom - score_top)
 	if details.visible:
 		_layout_details(detail_scroll.scroll_vertical)
