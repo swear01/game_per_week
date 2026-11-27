@@ -2,8 +2,13 @@ extends RefCounted
 
 const Growth = preload("res://growth.gd")
 const SAVE_PATH := "user://vanish-v1.json"
-# F(203) < 2^140 <= F(204). The Fibonacci series starts at F(2).
-const FIB_SHORTCUT_STEP := 202
+# The Fibonacci series starts at F(2): F(102) < 2^70 < F(103).
+const FIB_SHORTCUT_STEPS := {70: 101, 140: 202}
+const LEGACY_FIB_SHORTCUT_STEP := 202
+const LEGACY_HALF_PRICE := "half_gain"
+const FULL_PRICE := "full_gain"
+const POLYGON_PRICE := "polygon_1_55"
+const POLYGON_FEE := 1.55
 const CREDIT_STEPS := [2, 6, 14]
 const NUMERIC_LIMIT := 1000000000.0
 const SOURCE_LIMIT := 256
@@ -33,12 +38,18 @@ func skip_price() -> String:
 	return _leap_skip_price(stage)
 
 func _leap_skip_price(position: int) -> String:
-	if Growth.key(position) == "fib" and position + 2 < Growth.count() and Growth.key(position + 1) == "double" and Growth.budget(position + 1) == 140:
+	if _fib_shortcut_step(position) > 0:
 		return Growth.value(position + 1, Growth.budget(position + 1))
 	return ""
 
+func _fib_shortcut_step(position: int) -> int:
+	if Growth.key(position) == "fib" and position + 2 < Growth.count() and Growth.key(position + 1) == "double":
+		return int(FIB_SHORTCUT_STEPS.get(Growth.budget(position + 1), 0))
+	return 0
+
 func can_skip() -> bool:
-	return ready() and step >= FIB_SHORTCUT_STEP and not skip_price().is_empty()
+	var shortcut := _fib_shortcut_step(stage)
+	return ready() and shortcut > 0 and step >= shortcut
 
 func credit() -> int:
 	if not ready() or stage + 1 >= Growth.count() or can_skip():
@@ -94,13 +105,16 @@ func balance_text() -> String:
 
 	var count := _leaps.size()
 	if step == 0 and count > 0:
-		var last := _leaps[count - 1]
-		var position := _position(last.series)
-		var contribution := _short_gain(position, int(last.reached), String(last.parameter))
-		var price := _short_gain(position, int(last.target), String(last.parameter))
-		if last.reached == last.target:
-			return "B%d + %s ÷ 2" % [count - 1, contribution]
-		return "B%d + %s − %s ÷ 2" % [count - 1, contribution, price]
+		for i in range(count - 1, -1, -1):
+			var last := _leaps[i]
+			var position := _position(last.series)
+			var contribution := _leap_contribution(
+				position, int(last.reached), int(last.target), String(last.parameter),
+				String(last.pricing), true,
+			)
+			if contribution != "0":
+				return "B%d + %s" % [i, contribution]
+		return _opening
 	var basis := "B%d" % count
 	if is_finite(_settled_number):
 		basis = _format_amount(_settled_number, _settled_is_approximate)
@@ -111,13 +125,19 @@ func balance_text() -> String:
 		increase = _format_amount(added, added_is_approximate)
 	return "%s + %s" % [basis, increase]
 
+# Short form for narrow windows. Keep the changing index visible.
+func compact_balance() -> String:
+	var base := "B%d" % _leaps.size()
+	return base if step == 0 else "%s + Δ(%d)" % [base, step]
+
 func cost_text() -> String:
 	var required := target()
 	var parameter := _current_parameter()
-	var gain := _numeric_gain(stage, required, parameter)
-	if is_finite(gain):
-		return _format_amount(gain * 0.5, _uses_approximation(stage, required))
-	return "%s ÷ 2" % _short_gain(stage, required, parameter)
+	var pricing := _pricing_rule(stage)
+	var price := _numeric_price(stage, required, parameter, pricing)
+	if is_finite(price):
+		return _format_amount(price, pricing != POLYGON_PRICE and _uses_approximation(stage, required))
+	return _price_expression(stage, required, parameter, pricing, true)
 
 func balance_detail() -> String:
 	var count := _leaps.size()
@@ -125,11 +145,11 @@ func balance_detail() -> String:
 	var basis := "B0 = %s" % _opening
 	if _migrated_opening:
 		basis += "（來自舊存檔的上系紀錄，舊版只保存這一筆。）"
-	var lines := PackedStringArray([basis])
+	var lines := PackedStringArray([basis, "Δ(n) 是本系從起點到第 n 下的新增量。"])
 	lines.append_array(_settled_detail)
 	lines.append("目前餘額 = B%d + %s" % [count, _gain_expression(stage, step, parameter)])
 	if stage + 1 < Growth.count():
-		lines.append("躍遷價 = %s ÷ 2" % _gain_expression(stage, target(), parameter))
+		lines.append("躍遷價 = %s" % _price_expression(stage, target(), parameter, _pricing_rule(stage)))
 	return "\n".join(lines)
 
 func _current_parameter() -> String:
@@ -213,28 +233,57 @@ func _exact_value(position: int, reached: int, parameter: String) -> String:
 				return "BBB(5)"
 	return Growth.value(position, reached)
 
-func _settle_leap(position: int, reached: int, required: int, parameter: String) -> void:
-	var earned := _numeric_gain(position, reached, parameter)
-	var required_gain := earned if reached == required else _numeric_gain(position, required, parameter)
-	if is_finite(_settled_number) and is_finite(earned) and is_finite(required_gain):
-		_settled_number += earned - required_gain * 0.5
-		_settled_is_approximate = _settled_is_approximate or _uses_approximation(position, reached)
-	else:
-		_settled_number = NAN
+func _pricing_rule(position: int) -> String:
+	return POLYGON_PRICE if Growth.key(position) == "pi" else FULL_PRICE
 
-	var required_expression := _gain_expression(position, required, parameter)
-	var contribution := "%s ÷ 2" % required_expression
-	if reached != required:
-		contribution = "%s − %s ÷ 2" % [
-			_gain_expression(position, reached, parameter), required_expression,
-		]
+func _numeric_price(position: int, required: int, parameter: String, pricing: String) -> float:
+	if pricing == POLYGON_PRICE:
+		return POLYGON_FEE
+	var amount := _numeric_gain(position, required, parameter)
+	return amount * 0.5 if pricing == LEGACY_HALF_PRICE else amount
+
+func _price_expression(position: int, required: int, parameter: String, pricing: String, short: bool = false) -> String:
+	if pricing == POLYGON_PRICE:
+		return str(POLYGON_FEE)
+	var expression := _short_gain(position, required, parameter) if short else _gain_expression(position, required, parameter)
+	return "%s ÷ 2" % expression if pricing == LEGACY_HALF_PRICE else expression
+
+func _leap_contribution(position: int, reached: int, required: int, parameter: String, pricing: String, short: bool = false) -> String:
+	var price := _price_expression(position, required, parameter, pricing, short)
+	if reached == required:
+		if pricing == FULL_PRICE:
+			return "0"
+		if pricing == LEGACY_HALF_PRICE:
+			return price
+	if pricing == FULL_PRICE:
+		var reference := "P" if short and not parameter.is_empty() else parameter
+		var after := _exact_value(position, reached, reference)
+		var at_gate := _exact_value(position, required, reference)
+		var surplus := "(%s − %s)" % [after, at_gate]
+		if not short or surplus.length() <= SHORT_EXPRESSION_LIMIT:
+			return surplus
+	var gain := _short_gain(position, reached, parameter) if short else _gain_expression(position, reached, parameter)
+	return "%s − %s" % [gain, price]
+
+func _settle_leap(position: int, reached: int, required: int, parameter: String, pricing: String, skipped: bool) -> void:
+	# Timely full-price trades have zero net gain, even when neither term is computable.
+	if pricing != FULL_PRICE or reached != required:
+		var earned := _numeric_gain(position, reached, parameter)
+		var price := _numeric_price(position, required, parameter, pricing)
+		if is_finite(_settled_number) and is_finite(earned) and is_finite(price):
+			_settled_number += earned - price
+			_settled_is_approximate = _settled_is_approximate or _uses_approximation(position, reached)
+		else:
+			_settled_number = NAN
 	var count := _leaps.size()
-	_settled_detail.append("B%d = B%d + %s（%s）" % [
-		count + 1, count, contribution, Growth.title(position),
+	var contribution := _leap_contribution(position, reached, required, parameter, pricing)
+	var price_expression := _price_expression(position, required, parameter, pricing)
+	_settled_detail.append("B%d = B%d + %s（%s，扣 %s）" % [
+		count + 1, count, contribution, Growth.title(position), price_expression,
 	])
 	_leaps.append({
 		"series": Growth.key(position), "reached": reached, "target": required,
-		"parameter": parameter,
+		"parameter": parameter, "pricing": pricing, "skipped": skipped,
 	})
 
 func comparison() -> String:
@@ -283,9 +332,10 @@ func advance() -> void:
 	if stage == Growth.count() - 1:
 		won = true
 		return
-	var next_stage := stage + (2 if can_skip() else 1)
+	var skipped := can_skip()
+	var next_stage := stage + (2 if skipped else 1)
 	var next_discount := credit()
-	_settle_leap(stage, step, target(), _current_parameter())
+	_settle_leap(stage, step, target(), _current_parameter(), _pricing_rule(stage), skipped)
 	var record := display_value(step)
 	if _inherited_graph():
 		record = _graph_value(step, previous_record)
@@ -387,20 +437,33 @@ func _restore_economy(economy: Variant, current: int) -> bool:
 		if not String(entry.parameter).is_empty() and Growth.key(expected) != "sscg":
 			return false
 		var required := int(entry.target)
-		if required < Growth.safe_target(expected, CREDIT_STEPS.size()) or required > Growth.budget(expected):
+		var reached := int(entry.reached)
+		var pricing: Variant = entry.get("pricing", LEGACY_HALF_PRICE)
+		if pricing not in [LEGACY_HALF_PRICE, FULL_PRICE, POLYGON_PRICE]:
 			return false
-		if int(entry.reached) < required:
+		if pricing == POLYGON_PRICE and Growth.key(expected) != "pi":
 			return false
-		if not _leap_skip_price(expected).is_empty() and int(entry.reached) >= FIB_SHORTCUT_STEP:
-			expected += 2
-		else:
-			expected += 1
+		if required <= 0 or reached < required:
+			return false
+		var skipped: Variant = entry.get("skipped", _legacy_skip(expected, reached))
+		if not skipped is bool or (skipped and Growth.key(expected) != "fib"):
+			return false
+		expected += 2 if skipped else 1
 	if expected != current:
 		return false
 	_initialize_economy(origin, String(opening), bool(migrated))
 	for entry: Dictionary in entries:
-		_settle_leap(_position(entry.series), int(entry.reached), int(entry.target), String(entry.parameter))
+		var position := _position(entry.series)
+		var reached := int(entry.reached)
+		_settle_leap(
+			position, reached, int(entry.target), String(entry.parameter),
+			String(entry.get("pricing", LEGACY_HALF_PRICE)),
+			bool(entry.get("skipped", _legacy_skip(position, reached))),
+		)
 	return true
+
+func _legacy_skip(position: int, reached: int) -> bool:
+	return Growth.key(position) == "fib" and reached >= LEGACY_FIB_SHORTCUT_STEP
 
 func _position(series: Variant) -> int:
 	for i in Growth.count():

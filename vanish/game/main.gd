@@ -251,30 +251,25 @@ func _place(item: Control, x: float, y: float, width: float, height: float) -> v
 	item.position = Vector2(roundf(x), roundf(y))
 	item.size = Vector2(roundf(width), roundf(height))
 
-func _compact(value: String, max_width: float, smallest: int) -> String:
+func _compact(value: String, max_width: float, smallest: int, fallback: String) -> String:
 	if _measure(numeric_font, value, smallest) <= max_width:
 		return value
 	var digits := value.replace(",", "").replace(" ", "")
 	if digits.length() > 8 and digits.is_valid_int():
 		return "≈%s.%s×10^%d" % [digits[0], digits.substr(1, 3), digits.length() - 1]
-	var function_start := value.find("(")
-	if function_start > 0 and function_start <= 14:
-		var symbolic := value.substr(0, function_start) + "(…)"
-		if _measure(numeric_font, symbolic, smallest) <= max_width:
-			return symbolic
-	var addition := value.find(" + ")
-	if value.begins_with("B") and addition > 1 and addition <= 5:
-		return value.substr(0, addition) + " + Δ"
-	return value
+	return fallback
+
 
 func _debit(amount: String) -> String:
 	if amount.contains(" + ") or amount.contains(" − ") or amount.contains(" - "):
 		return "−(" + amount + ")"
+	if amount.begins_with("≈"):
+		return "≈−" + amount.trim_prefix("≈")
 	return "−" + amount
 
 func _fit_text() -> void:
 	var score_width := maxf(1.0, score.size.x - 14.0)
-	score.text = _compact(score_text, score_width, 28)
+	score.text = _compact(score_text, score_width, 28, run.compact_balance())
 	var score_max := maxi(23, mini(146, floori(planned_score_height * 0.84)))
 	var pixels := _font_size(numeric_font, score.text, score_width, score_max, 23)
 	while pixels > 23 and numeric_font.get_height(pixels) > planned_score_height - 2.0:
@@ -282,7 +277,7 @@ func _fit_text() -> void:
 	score.add_theme_font_size_override("font_size", pixels)
 	score.size.y = planned_score_height
 	var cost_width := maxf(1.0, price.size.x - 4.0)
-	price.text = "" if cost.is_empty() else _debit(_compact(cost, cost_width - 10.0, 15))
+	price.text = "" if cost.is_empty() else _debit(_compact(cost, cost_width - 10.0, 15, "Δ(%d)" % run.target()))
 	price.add_theme_font_size_override("font_size", _font_size(numeric_font, price.text, cost_width, 19, 12))
 	stage_label.add_theme_font_size_override("font_size", _font_size(text_font, stage_label.text, stage_label.size.x, 28, 15))
 	action_label.add_theme_font_size_override("font_size", clampi(floori(advance.size.y * 0.30), 19, 28))
