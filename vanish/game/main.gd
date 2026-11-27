@@ -19,6 +19,7 @@ var keyboard_focus := false
 var score_text := ""
 var cost := ""
 var progress_fraction := 0.0
+var planned_score_height := 0.0
 
 @onready var advance: Button = $Advance
 @onready var action_label: Label = $Advance/Action
@@ -235,7 +236,10 @@ func _layout() -> void:
 	_place(track, 0.0, header_height - 3.0, leap_width, 3.0)
 	_place(progress, 0.0, 0.0, leap_width * progress_fraction, 3.0)
 	_place(grow, margin, score_top, content_width, bottom - score_top)
-	_place(score, 0.0, 0.0, content_width, score_height)
+	planned_score_height = roundf(score_height)
+	# Clear the old line minimum before shrinking the label on window resize.
+	score.add_theme_font_size_override("font_size", 23)
+	_place(score, 0.0, 0.0, content_width, planned_score_height)
 	_place(focus_mark, (content_width - 26.0) / 2.0, score_height + 1.0, 26.0, 2.0)
 	_place(hint, margin, score_top + score_height + 7.0, content_width, 18.0)
 	_place(tower, margin, art_top, content_width, maxf(0.0, bottom - art_top))
@@ -271,8 +275,12 @@ func _debit(amount: String) -> String:
 func _fit_text() -> void:
 	var score_width := maxf(1.0, score.size.x - 14.0)
 	score.text = _compact(score_text, score_width, 28)
-	var score_max := maxi(40, mini(146, floori(score.size.y * 0.84)))
-	score.add_theme_font_size_override("font_size", _font_size(numeric_font, score.text, score_width, score_max, 23))
+	var score_max := maxi(23, mini(146, floori(planned_score_height * 0.84)))
+	var pixels := _font_size(numeric_font, score.text, score_width, score_max, 23)
+	while pixels > 23 and numeric_font.get_height(pixels) > planned_score_height - 2.0:
+		pixels -= 1
+	score.add_theme_font_size_override("font_size", pixels)
+	score.size.y = planned_score_height
 	var cost_width := maxf(1.0, price.size.x - 4.0)
 	price.text = "" if cost.is_empty() else _debit(_compact(cost, cost_width - 10.0, 15))
 	price.add_theme_font_size_override("font_size", _font_size(numeric_font, price.text, cost_width, 19, 12))
