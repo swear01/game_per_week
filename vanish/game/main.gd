@@ -164,11 +164,26 @@ func _refresh() -> void:
 	progress_fraction = clampf(float(run.step) / maxf(1.0, float(target)), 0.0, 1.0)
 	progress.color = GOLD if ready else MUTED
 	progress.size.x = track.size.x * progress_fraction
+	if tower.series != run.stage:
+		tower.mark = _previous_mark()
 	tower.show_progress(run.stage, run.step, target)
 	grow.tooltip_text = "空白鍵成長 · F1 詳情"
 	advance.tooltip_text = "Enter 完成 · F1 詳情" if last else "到 %s · F1 詳情" % Growth.title(next_stage)
 	_fit_text()
 	_show_focus()
+
+# Rebuild the previous series' brick signature from the save: π by its recorded step, others by stage.
+func _previous_mark() -> int:
+	if run.previous_title == Growth.title(0):
+		# The opening drawing stops subdividing after six taps.
+		for k in 6:
+			if Growth.value(0, k) == run.previous_record:
+				return Tower.signature(0, k)
+		return Tower.signature(0, 6)
+	for i in range(1, Growth.count()):
+		if Growth.title(i) == run.previous_title:
+			return Tower.signature(i, 0)
+	return 0
 
 func _toggle_details() -> void:
 	if run.won or details.visible:
