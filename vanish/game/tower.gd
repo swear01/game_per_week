@@ -6,6 +6,9 @@ const FILL := Color("#4b4130")
 const SHADE := Color("#24201a")
 const OUTLINE := Color("#625744")
 const WHITE := Color("#e9e6dd")
+const Growth = preload("res://growth.gd")
+const Early = preload("res://early_patterns.gd")
+const Large = preload("res://large_patterns.gd")
 
 const BRICK := Color("#8a8678")
 const HATCH := Color("#4a483f")
@@ -61,7 +64,7 @@ func _reduced() -> bool:
 	return DisplayServer.has_method("accessibility_should_reduce_animation") and int(DisplayServer.accessibility_should_reduce_animation()) > 0 # -1 means unsupported
 
 func _process(_delta: float) -> void:
-	if float(Time.get_ticks_msec() - _started) >= (LEAP_MS if _kind == 2 else TAP_MS):
+	if float(Time.get_ticks_msec() - _started) >= (LEAP_MS if _kind == 2 else _tap_ms()):
 		_kind = 0
 		set_process(false)
 	queue_redraw()
@@ -70,7 +73,15 @@ func _progress() -> float:
 	return float(Time.get_ticks_msec() - _started) if _kind != 0 else 1e9
 
 func _ready() -> void:
+	clip_contents = true
 	set_process(false)
+
+func _tap_ms() -> float:
+	return 360.0 if Growth.key(series) == "sandpile" else TAP_MS # a topple cascade needs time to be read
+
+func _area() -> Rect2:
+	var margin := maxf(6.0, float(cell))
+	return Rect2(margin, 4.0, size.x - 2.0 * margin, maxf(0.0, base_y - 7.0))
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -87,7 +98,7 @@ func _draw() -> void:
 	if _kind == 2:
 		_draw_leap(t)
 		return
-	var e := 1.0 - pow(1.0 - clampf(t / TAP_MS, 0.0, 1.0), 2.0)
+	var e := 1.0 - pow(1.0 - clampf(t / _tap_ms(), 0.0, 1.0), 2.0)
 	_ground(series, false, mark)
 	_shape(series, step, goal, step - 1 if _kind == 1 else step, e)
 
@@ -117,18 +128,13 @@ func _draw_leap(t: float) -> void:
 	_brick(rect, mark if mark > 0 else _from_mark)
 
 func _anchor() -> Vector2:
-	if _from_series == 0:
-		return size / 2.0
-	if _from_series == 1:
-		var filled := _harmonic(mini(_from_step, _from_goal)) / _harmonic(_from_goal)
+	if _from_series == 1 or _from_series == 2:
+		var filled := _sum(mini(_from_step, _from_goal), _from_series == 2) / _sum(_from_goal, _from_series == 2)
 		return Vector2(center, base_y - (base_y - 4) * filled / 2.0)
-	return Vector2(center, base_y - _rows() * pitch / 2.0)
+	return _area().get_center() if _from_series > 2 else size / 2.0
 
 func _stack_width() -> int:
 	return floori(minf(size.x * 0.4, 6.0 * pitch) / 2.0) * 2
-
-func _rows() -> int:
-	return maxi(2, floori(float(base_y - 4) / pitch))
 
 func _slot(count: int, index: int) -> Rect2:
 	if count == 1: # the first souvenir is a slab under the harmonic stack
@@ -150,12 +156,6 @@ func _ground(count: int, hide_last: bool, notches: int) -> void:
 			continue
 		draw_rect(slot, DIM)
 		draw_rect(Rect2(slot.position, Vector2(slot.size.x, 1)), INK)
-	var person_x := center + 9 * pitch
-	if person_x + 12 < size.x:
-		draw_rect(Rect2(person_x, base_y - 12, 5, 5), WHITE)
-		draw_rect(Rect2(person_x - 2, base_y - 7, 9, 3), WHITE)
-		draw_rect(Rect2(person_x, base_y - 4, 2, 5), WHITE)
-		draw_rect(Rect2(person_x + 4, base_y - 4, 2, 5), WHITE)
 
 # The gray brick: diagonal hatch plus one dark notch per signature step around its edge.
 func _brick(rect: Rect2, notches: int) -> void:
@@ -180,12 +180,17 @@ func _brick(rect: Rect2, notches: int) -> void:
 		draw_rect(Rect2(Vector2i(r.position) + point.clamp(Vector2i.ZERO, r.size - Vector2i.ONE * dot), Vector2.ONE * dot), SHADE)
 
 func _shape(count: int, now: int, target: int, before: int, e: float) -> void:
+	var area := _area()
+	if area.size.y < 12.0 or area.size.x < 30.0:
+		return
 	if count == 0:
 		_draw_circle(now, before, e)
-	elif count == 1:
-		_draw_stack(now, target, before, e)
+	elif count <= 2:
+		_draw_stack(now, target, before, e, count == 2)
+	elif count < 14:
+		Early.draw(self, Growth.key(count), now, before, e, area)
 	else:
-		_draw_tower(count, now, target, before, e)
+		Large.draw(self, Growth.key(count), now, e, area)
 
 func _draw_circle(now: int, before: int, e: float) -> void:
 	var radius := floorf(minf(size.x * 0.36, size.y * 0.44))
@@ -201,83 +206,51 @@ func _draw_circle(now: int, before: int, e: float) -> void:
 		# New vertices start on the old chords' midpoints and slide out to the circle.
 		for i in range(1, sides, 2):
 			outline[i] = ((outline[i - 1] + outline[i + 1]) / 2.0).lerp(outline[i], e)
+	var edge := INK.lerp(WHITE, 0.65 * (1.0 - e)) if before < now else INK
 	for i in range(sides):
-		_pixel_line(outline[i], outline[i + 1], pixel)
+		_pixel_line(outline[i], outline[i + 1], pixel, edge)
 	if sides <= 8:
 		for i in range(sides):
 			draw_rect(Rect2(outline[i] - Vector2.ONE * pixel, Vector2.ONE * pixel * 2.0), INK)
 	# The stationary center is an anchor while the old chord splits in two.
 	draw_rect(Rect2(middle - Vector2.ONE * pixel / 2.0, Vector2.ONE * pixel), DIM)
 
-func _pixel_line(from: Vector2, to: Vector2, pixel: float) -> void:
+func _pixel_line(from: Vector2, to: Vector2, pixel: float, edge: Color) -> void:
 	var steps := maxi(1, ceili(maxf(absf(to.x - from.x), absf(to.y - from.y)) / pixel))
 	for i in range(steps + 1):
 		var point := (from.lerp(to, float(i) / steps) / pixel).round() * pixel
-		draw_rect(Rect2(point, Vector2.ONE * pixel), INK)
+		draw_rect(Rect2(point, Vector2.ONE * pixel), edge)
 
-# Harmonic: layer k is 1/k as tall as the first, so the stack visibly thins out.
-# Layers past the goal keep their heights (unit is fixed by the goal) and only extend a striped 1px skin, so work stays bounded.
-func _draw_stack(now: int, target: int, before: int, e: float) -> void:
-	var unit := float(base_y - 4) / _harmonic(target)
+# Keep the newest layers in view after the gate. Their height still represents
+# the actual increment; a subpixel layer enters as a single growing scanline.
+func _draw_stack(now: int, target: int, before: int, e: float, root: bool) -> void:
+	var unit := float(base_y - 4) / _sum(target, root)
 	var width := _stack_width()
 	var x := center - width / 2
 	var y := float(base_y)
-	var full := mini(now, ceili(unit * 2.0)) # beyond this every layer is 1px
-	for k in range(1, full + 1):
+	var first := maxi(1, now - target + 1)
+	var entering := before < now and e < 1.0
+	if entering and first > 1:
+		var departing := first - 1
+		var tail_height := maxf(1.0, roundf(unit / (sqrt(departing) if root else departing)))
+		y -= tail_height * (1.0 - e)
+		draw_rect(Rect2(x, y, width, base_y - y), DIM)
+	for k in range(first, now + 1):
 		if y <= 0.0:
 			break
-		var height := maxf(1.0, roundf(unit / k))
-		if k == now and before < now and now <= target:
+		var height := maxf(1.0, roundf(unit / (sqrt(k) if root else k)))
+		var top_width := width
+		if k == now and entering:
 			height = maxf(1.0, roundf(height * e))
+			top_width = maxi(1, roundi(width * e))
 		height = minf(y, height)
 		y -= height
-		draw_rect(Rect2(x, y, width, height), INK if k == now else DIM)
+		draw_rect(Rect2(x, y, top_width, height), INK if k == now else DIM)
 		if height > 2.0:
-			draw_rect(Rect2(x, y, width, 1), WHITE if k == now else INK)
-	for k in range(full + 1, mini(now, full + maxi(0, int(y))) + 1):
-		y -= 1.0
-		draw_rect(Rect2(x, y, width, 1), INK if k % 2 == 0 else DIM)
+			draw_rect(Rect2(x, y, top_width, 1), WHITE if k == now else INK)
 
-func _harmonic(n: int) -> float:
+func _sum(n: int, root: bool) -> float:
 	var total := 0.0
 	for k in range(1, n + 1):
-		total += 1.0 / k
+		total += 1.0 / (sqrt(k) if root else k)
 	return total
-
-func _draw_tower(count: int, now: int, target: int, before: int, e: float) -> void:
-	var max_rows := _rows()
-	var cells: Array[Vector2i] = []
-	for row in range(max_rows):
-		var span := _half_width(count, row, max_rows)
-		for col in range(-span, span + 1):
-			if count >= 25 and row >= max_rows * 0.58 and absi(col) <= 1:
-				continue
-			cells.append(Vector2i(col, row))
-	var filled := mini(cells.size(), ceili(clampf(float(now) / target, 0.0, 1.0) * cells.size()))
-	var settled := mini(cells.size(), ceili(clampf(float(before) / target, 0.0, 1.0) * cells.size()))
-	for row in range(0, max_rows, 3):
-		var span := _half_width(count, row, max_rows)
-		var guide_y := base_y - (row + 1) * pitch
-		for side: int in [-1, 1]:
-			draw_rect(Rect2(center + side * span * pitch - floori(cell / 2.0), guide_y, cell, 2), OUTLINE)
-	for i in range(filled):
-		var tile := cells[i]
-		var x := center + tile.x * pitch - floori(cell / 2.0)
-		var y := base_y - (tile.y + 1) * pitch
-		var side := cell if i < settled else maxi(1, roundi(cell * e))
-		_draw_tile(x + (cell - side) / 2, y + cell - side, side, i == filled - 1)
-	if filled == 0:
-		draw_rect(Rect2(center - floori(cell / 2.0), base_y - pitch, cell, cell), SHADE)
-
-func _half_width(count: int, row: int, total: int) -> int:
-	var height_ratio := float(row) / total
-	if count >= 25:
-		return 11 if height_ratio < 0.36 else 7
-	if count >= 17:
-		return 10 if height_ratio < 0.30 else (7 if height_ratio < 0.68 else 4)
-	return 8 if height_ratio < 0.27 else (6 if height_ratio < 0.74 else 3)
-
-func _draw_tile(x: int, y: int, side: int, last: bool) -> void:
-	draw_rect(Rect2(x, y, side, side), INK if last else FILL)
-	if not last:
-		draw_rect(Rect2(x, y, side, 1), DIM)

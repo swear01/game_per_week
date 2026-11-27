@@ -14,6 +14,10 @@ func _initialize() -> void:
 		passed = passed and run.stage == stage and not run.ready() and not opening.is_empty()
 		passed = passed and run.balance_text() == balance
 		var target := run.target()
+		if Growth.key(stage) == "busy_beaver":
+			passed = passed and run.cost_text() == "108×Q35 + 47,176,870"
+			passed = passed and run.balance_detail().contains("Q35 = 7×Q34 + ")
+
 		for i in target:
 			if run.ready():
 				passed = false
@@ -63,14 +67,19 @@ func _initialize() -> void:
 		run.grow()
 	run.advance()
 	passed = passed and run.previous_record == "TREE(1001)" and run.display_value(0) == "SSCG(P)"
+	passed = passed and run.balance_detail().contains("998×Q33 + (TREE(1001) − TREE(3))")
 	for i in run.target():
 		run.grow()
 	var graph_record := "SSCG(TREE(1001) + %d)" % run.step
 	run.advance()
 	passed = passed and run.previous_record == graph_record
 	passed = passed and run.balance_detail().contains("(%s − SSCG(TREE(1001)))" % graph_record)
+	run.reset()
+	passed = passed and run.stage == 0 and run.step == 0 and not run.won
+	passed = passed and run.previous_record.is_empty() and run.previous_title.is_empty()
+	passed = passed and run.balance_text() == "1" and not run.balance_detail().contains("TREE(")
 	passed = check_carried_balance() and passed
-	passed = check_legacy_balance() and passed
+	passed = check_integer_prices() and passed
 	if passed:
 		print("Vanish: %d series, %d taps, handoffs, credit, shortcut and carried balance OK" % [Growth.count(), total])
 	else:
@@ -122,51 +131,21 @@ func check_amount(displayed: String, expected: float, scenario: String) -> bool:
 	return true
 
 
-func check_legacy_balance() -> bool:
-	var path := OS.get_temp_dir().path_join("vanish-progression-%d.json" % OS.get_process_id())
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("Cannot create isolated v1 fixture")
-		return false
-	file.store_string(JSON.stringify({"series": "triangular", "step": 0, "discount": 3,
-		"previous_record": "841", "previous_title": "對數當加量", "won": false}))
-	file.close()
-	var migrated := Run.new()
-	migrated.restore(path)
-	var passed := check_amount(migrated.balance_text(), 841.0, "v1 opening") and migrated.target() == 60
-	migrated.grow()
-	passed = check_amount(migrated.balance_text(), 843.0, "v1 after growth") and passed
-	passed = migrated.save_game(path) and passed
-	var reopened := Run.new()
-	reopened.restore(path)
-	passed = check_amount(reopened.balance_text(), 843.0, "v1 after saving and reopening") and passed
-	passed = reopened.step == 1 and reopened.target() == 60 and passed
-	passed = check_half_price_balance(path) and passed
-	DirAccess.remove_absolute(path)
-	if FileAccess.file_exists(path + ".tmp"):
-		DirAccess.remove_absolute(path + ".tmp")
-	return passed
-
-
-func check_half_price_balance(path: String) -> bool:
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("Cannot create isolated half-price ledger")
-		return false
-	file.store_string(JSON.stringify({"series": "harmonic", "step": 3, "discount": 0,
-		"previous_record": "≈1.5702", "previous_title": "多邊形逼近 π", "won": false,
-		"economy": {"start": "pi", "opening": "1", "migrated": false,
-			"leaps": [{"series": "pi", "reached": 5, "target": 5, "parameter": ""}]}}))
-	file.close()
-	var migrated := Run.new()
-	migrated.restore(path)
-	var passed := check_amount(migrated.balance_text(), 3.1184, "old half-price payments remain settled")
-	passed = passed and migrated.stage == 1 and migrated.step == 3 and migrated.target() == 20
-	for i in 17:
-		migrated.grow()
-	migrated.advance()
-	passed = check_amount(migrated.balance_text(), 1.2851, "new leaps charge full price after migration") and passed
-	passed = migrated.save_game(path) and passed
-	var reopened := Run.new()
-	reopened.restore(path)
-	return check_amount(reopened.balance_text(), 1.2851, "mixed-price ledger survives reopening") and reopened.stage == 2 and passed
+# In the integer chapter, even the cheapest discounted gate should exceed the
+# preceding full-price gate. Compare the exact terms before display formatting.
+func check_integer_prices() -> bool:
+	var previous_full := 0
+	for stage in Growth.count():
+		if Growth.key(stage) == "golomb":
+			previous_full = 1
+		if previous_full == 0:
+			continue
+		var seed := Growth.value(stage, 0).to_int()
+		var minimum := Growth.value(stage, Growth.safe_target(stage, 3)).to_int() - seed
+		if minimum <= previous_full:
+			push_error("%s gate %d follows %d" % [Growth.key(stage), minimum, previous_full])
+			return false
+		previous_full = Growth.value(stage, Growth.budget(stage)).to_int() - seed
+		if Growth.key(stage) == "fib":
+			return true
+	return false
