@@ -11,6 +11,7 @@ const SAVE_INTERVAL_MS := 10000
 const CREDIT_THRESHOLDS := [2, 6, 14]
 
 var run := Run.new()
+var replay_locked := false
 var dirty := false
 var last_save := 0
 var text_font := SystemFont.new()
@@ -65,13 +66,22 @@ func _grow_once() -> void:
 
 func _advance_once() -> void:
 	if run.won:
+		if replay_locked:
+			return
 		run.reset()
 	elif run.ready():
 		run.advance()
+		if run.won:
+			replay_locked = true
+			get_tree().create_timer(0.75).timeout.connect(_unlock_replay)
 	else:
 		return
 	dirty = true
 	_save()
+	_refresh()
+
+func _unlock_replay() -> void:
+	replay_locked = false
 	_refresh()
 
 func _save() -> void:
@@ -89,7 +99,7 @@ func _refresh() -> void:
 	ending.visible = run.won
 	if run.won:
 		_set_advance("再玩", "")
-		advance.disabled = false
+		advance.disabled = replay_locked
 		return
 
 	var value := run.display_value(run.step)
