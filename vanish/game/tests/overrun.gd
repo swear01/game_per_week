@@ -135,6 +135,8 @@ func _check_golomb_tape(series: int, goal: int) -> void:
 	var moving_third := await _frame()
 	_settle_tap()
 	var third := await _frame()
+	if second.get_data() == third.get_data():
+		_fail("golomb read head", "the highlight must move to the next equal term")
 	if Growth.value(series, 1) != "2" or Growth.value(series, 2) != "2" or at_two < 10:
 		_fail("golomb cells 2 and 3", "adjacent equal values must appear on the fixed tape")
 	for index in [2, 3]:
@@ -148,6 +150,8 @@ func _check_golomb_tape(series: int, goal: int) -> void:
 	var before_scroll := await _frame()
 	var old_height := _tape_height(before_scroll, area, cell_width, slots, before, shared_index)
 	tower.show_progress(series, before + 1, goal)
+	# Sample the same index at its final x, once the horizontal scroll is complete.
+	_settle_tap()
 	var after_scroll := await _frame()
 	var new_height := _tape_height(after_scroll, area, cell_width, slots, before + 1, shared_index)
 	if old_height < 10 or new_height != old_height:
