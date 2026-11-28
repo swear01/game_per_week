@@ -54,6 +54,13 @@ func _run() -> void:
 			await _check_stack_baseline(series, id, goal)
 		if id == "golomb":
 			await _check_golomb_tape(series, goal)
+		if id in ["fib", "lattice_circle", "graphs"]:
+			await _check_visible_tap(series, goal, 2, id)
+		if id == "wave":
+			await _check_visible_tap(series, goal, 7, "wave cursor")
+		if id == "triangular":
+			await _check_visible_tap(series, goal, 14, "triangle ordinary dot")
+			await _check_visible_tap(series, goal, 15, "triangle row completion")
 		if series + 1 < Growth.count():
 			await _check_leap(series, id)
 	if sampled == 0:
@@ -66,7 +73,6 @@ func _check_tap(series: int, id: String, n: int, goal: int) -> void:
 	var run := Run.new()
 	run.stage = series
 	run.step = n
-	tower.mark = 16
 	tower.show_progress(run.stage, run.step, goal)
 	_settle_tap()
 	var settled := await _frame()
@@ -125,8 +131,8 @@ func _check_stack_baseline(series: int, id: String, goal: int) -> void:
 
 func _check_golomb_tape(series: int, goal: int) -> void:
 	var area: Rect2 = tower.call("_area")
-	var cell_width := clampf(floorf(area.size.x / 13.0), 20.0, 34.0)
-	var slots := maxi(1, floori(area.size.x / cell_width))
+	var cell_width := clampf(floorf(area.size.x / 12.0), 24.0, 44.0)
+	var slots := clampi(floori(area.size.x / cell_width), 1, 12)
 	tower.show_progress(series, 1, goal)
 	_settle_tap()
 	var second := await _frame()
@@ -162,37 +168,47 @@ func _tape_height(image: Image, area: Rect2, cell_width: float, slots: int, step
 	var hi := step + 1 + mini(3, slots - 1)
 	var lo := maxi(1, hi - slots + 1)
 	var x := int(tower.position.x + area.get_center().x + (index - lo + 0.25 - slots / 2.0) * cell_width)
-	var top := roundi(tower.position.y + area.get_center().y - minf(32.0, area.size.y * 0.52) / 2.0) - 2
-	var bottom := roundi(tower.position.y + area.get_center().y + minf(32.0, area.size.y * 0.52) / 2.0) + 2
+	var top := roundi(tower.position.y + area.get_center().y - minf(54.0, area.size.y * 0.60) / 2.0) - 2
+	var bottom := roundi(tower.position.y + area.get_center().y + minf(54.0, area.size.y * 0.60) / 2.0) + 2
 	var height := 0
 	for y in range(top, bottom):
 		height += int(image.get_pixel(x, y).a > 0.5)
 	return height
+
+func _check_visible_tap(series: int, goal: int, step: int, badge: String) -> void:
+	tower.show_progress(series, step - 1, goal)
+	_settle_tap()
+	var before := await _frame()
+	tower.show_progress(series, step, goal)
+	tower.set("_started", Time.get_ticks_msec() - roundi(float(tower.call("_tap_ms")) * 0.25))
+	var during := await _frame()
+	_settle_tap()
+	var final := await _frame()
+	var intermediate := during.get_data()
+	if intermediate == before.get_data() or intermediate == final.get_data():
+		_fail(badge, "a native mid-frame must differ from both settled states")
 
 func _check_leap(series: int, id: String) -> void:
 	leaps += 1
 	var run := Run.new()
 	run.stage = series
 	run.step = run.target()
-	tower.mark = 16 if series > 0 else 0
 	tower.show_progress(run.stage, run.step, run.target())
 	_settle_tap()
 	await _frame()
-	var mark := AnimatedTower.signature(run.stage, run.step)
 	run.advance()
-	tower.mark = mark
 	tower.show_progress(run.stage, run.step, run.target())
 	if run.stage != series + 1 or run.step != 0 or tower.series != run.stage or tower.step != 0:
 		_fail(id, "leap must start the next series at step zero")
-	var first_brick := series == 0
-	if tower.is_processing() != first_brick:
-		_fail(id, "only π → harmonic should animate the leap")
+	if tower.is_processing():
+		_fail(id, "leaps should show the destination immediately")
 	var early := await _frame()
 	_settle_tap()
 	var settled := await _frame()
-	var frames_differ := early.get_data() != settled.get_data()
-	if frames_differ != first_brick:
-		_fail(id, "the first brick should animate; other leaps should show their destination immediately")
+	if early.get_data() != settled.get_data():
+		_fail(id, "destination changes with no growth input")
+	if series == 0 and settled.get_used_rect().has_area():
+		_fail(id, "zero harmonic terms should leave the diagram empty")
 
 func _settle_tap() -> void:
 	tower.set("_started", Time.get_ticks_msec() - 1000)

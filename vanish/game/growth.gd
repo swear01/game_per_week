@@ -1,5 +1,7 @@
 extends RefCounted
 
+const Polygon = preload("res://polygon.gd")
+
 const STAGES := [
 	["pi", "多邊形逼近 π", 3, "把圓弧平分，邊數翻倍。分數是路徑長 ÷ 兩倍直徑。"],
 	["harmonic", "調和加法", 20, ""],
@@ -19,7 +21,7 @@ const STAGES := [
 	["double", "固定翻倍", 70, "複製目前的全部。"],
 	["pi_digits", "接上 π 的下一位", 78, ""],
 	["factorial", "排列所有物件", 78, ""],
-	["graphs", "邊能連或不連", 78, ""],
+	["graphs", "點的連線組合", 78, ""],
 	["square", "連續平方", 78, "把整個舊值平方。"],
 	["growing_power", "次方逐下加一", 78, ""],
 	["tower", "舊值變指數", 78, ""],
@@ -49,6 +51,13 @@ const PI_DIGITS := (
 	+ "8678316527120190914564856692346034861045432664821339360726024914127"
 )
 const EXACT_ARITHMETIC_STEPS := 512
+const INT_MAX := 0x7fffffffffffffff
+
+
+static var _golomb_terms := PackedInt64Array([0, 1])
+static var _golomb_prefix := PackedInt64Array([0, 1])
+static var _golomb_weighted := PackedInt64Array([0, 1])
+static var _golomb_folded := PackedInt64Array([0, 1])
 
 
 static func count() -> int:
@@ -91,12 +100,7 @@ static func value(stage: int, step: int) -> String:
 	var n := maxi(step, 0)
 	match key(stage):
 		"pi":
-			if n == 0:
-				return "1"
-			if n > 14:
-				return "2^%d × sin(π / 2^%d)" % [n, n + 1]
-			var sides := float(1 << (n + 1))
-			return "≈" + String.num(sides * sin(PI / sides) / 2.0, maxi(4, n - 2))
+			return Polygon.value(n)
 		"harmonic", "inverse_sqrt":
 			var root := key(stage) == "inverse_sqrt"
 			if n == 0:
@@ -108,9 +112,7 @@ static func value(stage: int, step: int) -> String:
 				sum += 1.0 / (sqrt(float(i)) if root else float(i))
 			return "≈%.4f" % sum
 		"golomb":
-			if n > EXACT_ARITHMETIC_STEPS:
-				return "Golomb(%d)" % (n + 1)
-			return str(_golomb(n + 1))
+			return str(golomb(mini(n, INT_MAX - 1) + 1))
 		"wave":
 			if n > 1000000:
 				return "24 × ⌊%d/8⌋ + 前 %d 項加量" % [n, n % 8]
@@ -282,7 +284,7 @@ static func rule(stage: int, step: int) -> String:
 		"square_partitions":
 			return "%d → %d 塊，只准用 1、4、9、16…塊一包。" % [square_partition_size(n), square_partition_size(n + 1)]
 		"partitions":
-			return "%d → %d 塊，可用任何整數包，順序不計。" % [n + 3, n + 4]
+			return "每下加一塊，計算不分順序的拆法。3 塊有 3 種，4 塊有 5 種。積木多時只畫部分拆法。"
 		"plane_partitions":
 			return "%d → %d 塊，排列成兩個方向都不升高的地形。" % [n + 3, n + 4]
 		"pi_digits":
@@ -301,7 +303,7 @@ static func rule(stage: int, step: int) -> String:
 		"factorial":
 			return "下一個物件可插進每個舊排列的 %d 個位置。" % (n + 3)
 		"graphs":
-			return "加入一個點。它和已有的 %d 個點都能各自連邊或留空。" % (n + 2)
+			return "每個點都能分辨。任兩個不同的點可連一條無向線，空圖也算。已有 %d 個點，下一點帶來 %d 條候選線，每條可獨立選擇。v 個點共有 2^(v(v−1)/2) 種連法。" % [n + 2, n + 2]
 		"growing_power":
 			return "舊值取 %d 次方。下一個次方本身也加一。" % (n + 2)
 		"tower":
@@ -343,12 +345,44 @@ static func rule(stage: int, step: int) -> String:
 	return String(STAGES[stage][3])
 
 
-static func _golomb(index: int) -> int:
-	var terms := PackedInt32Array([0, 1])
-	terms.resize(index + 1)
-	for i in range(2, index + 1):
-		terms[i] = 1 + terms[i - terms[terms[i - 1]]]
-	return terms[index]
+# S(k) = sum G(i); T(k) = sum i*G(i) = S(S(k)); U(k) = T(S(k)).
+# The folded prefix locates the run using two short inverse searches.
+static func golomb(n: int) -> int:
+	if n < 1:
+		return 0
+	while _golomb_folded[-1] < n:
+		var j := _golomb_terms.size()
+		var g := 1 + _golomb_terms[j - _golomb_terms[_golomb_terms[j - 1]]]
+		var prev := _golomb_prefix[-1]
+		var subtotal := g * prev + _golomb_triangle(g)
+		var remaining := INT_MAX - _golomb_folded[-1]
+		@warning_ignore("integer_division")
+		var block := remaining if subtotal > remaining / j else j * subtotal
+		_golomb_terms.append(g)
+		_golomb_prefix.append(prev + g)
+		_golomb_weighted.append(_golomb_weighted[-1] + j * g)
+		_golomb_folded.append(_golomb_folded[-1] + block)
+	var k := _golomb_folded.bsearch(n)
+	var offset := n - _golomb_folded[k - 1]
+	var skip := _golomb_prefix[k - 1]
+	var low := 1
+	var high := _golomb_terms[k]
+	while low < high:
+		@warning_ignore("integer_division")
+		var mid := (low + high) / 2
+		@warning_ignore("integer_division")
+		if mid * skip + _golomb_triangle(mid) <= (offset - 1) / k:
+			low = mid + 1
+		else:
+			high = mid
+	var j := skip + low
+	var rem := offset - k * ((low - 1) * skip + _golomb_triangle(low - 1)) - 1
+	@warning_ignore("integer_division")
+	return _golomb_weighted[k - 1] + k * (low - 1) + 1 + rem / j
+
+
+static func _golomb_triangle(n: int) -> int:
+	return (n * (n + 1)) >> 1
 
 
 static func _bit_length(number: int) -> int:
