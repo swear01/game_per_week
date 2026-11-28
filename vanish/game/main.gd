@@ -163,12 +163,8 @@ func _clear_gain() -> void:
 
 func _flash_gain() -> void:
 	_clear_gain()
-	var amount := run.last_increment_text()
-	gain.text = "+" + amount.trim_prefix("≈").trim_prefix("≥")
-	if amount.begins_with("≈"):
-		gain.text = "≈" + gain.text
-	elif amount.begins_with("≥"):
-		gain.text = "≥" + gain.text
+	var amount := run.last_increment_text().trim_prefix("≈")
+	gain.text = amount if amount.begins_with("≥") else "+" + amount
 	gain.add_theme_font_size_override("font_size", _font_size(numeric_font, gain.text, gain.size.x, 22, 14))
 	gain.modulate.a = 1.0
 	gain.show()
@@ -208,11 +204,11 @@ func _refresh() -> void:
 		advance.disabled = replay_locked
 		return
 
-	score_text = run.balance_text()
+	score_text = run.balance_text().trim_prefix("≈")
 	var target := run.target()
 	var ready := run.ready()
 	var last := run.stage == Growth.count() - 1
-	cost = "" if last else run.cost_text()
+	cost = "" if last else run.cost_text().trim_prefix("≈")
 	price.visible = not cost.is_empty()
 	var skip := run.can_skip()
 	advance.disabled = not ready
@@ -262,7 +258,7 @@ func _toggle_details() -> void:
 	if run.stage == 0:
 		rule += "\n" + Growth.value(0, run.step)
 	var growth_info := "%s%s%s\n\n%s" % [rule, stage_record, comparison_line, run.balance_detail()]
-	detail_content = leap_info + "\n\n" + growth_info
+	detail_content = leap_info + "\n\n" + growth_info + "\n\n畫面數字依量級取近似值；≥ 表示已知下界。"
 	_layout_details(0)
 	details.show()
 
@@ -344,7 +340,7 @@ func _compact(value: String, max_width: float, smallest: int, fallback: String) 
 
 func _fit_text() -> void:
 	var score_width := maxf(1.0, score.size.x - 14.0)
-	score.text = _compact(score_text, score_width, 28, run.compact_balance())
+	score.text = _compact(score_text, score_width, 28, run.compact_balance().trim_prefix("≈"))
 	var score_max := maxi(23, mini(146, floori(planned_score_height * 0.84)))
 	var pixels := _font_size(numeric_font, score.text, score_width, score_max, 23)
 	while pixels > 23 and numeric_font.get_height(pixels) > planned_score_height - 2.0:
@@ -352,7 +348,7 @@ func _fit_text() -> void:
 	score.add_theme_font_size_override("font_size", pixels)
 	score.size.y = planned_score_height
 	var cost_width := maxf(1.0, price.size.x - 4.0)
-	price.text = "" if cost.is_empty() else _compact(cost, cost_width, 15, run.compact_cost())
+	price.text = "" if cost.is_empty() else _compact(cost, cost_width, 15, run.compact_cost().trim_prefix("≈"))
 	price.add_theme_font_size_override("font_size", _font_size(numeric_font, price.text, cost_width, 19, 12))
 	stage_label.add_theme_font_size_override("font_size", _font_size(text_font, stage_label.text, stage_label.size.x, 28, 15))
 	action_label.add_theme_font_size_override("font_size", clampi(floori(advance.size.y * 0.30), 19, 28))
