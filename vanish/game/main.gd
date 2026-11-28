@@ -164,7 +164,7 @@ func _clear_gain() -> void:
 func _flash_gain() -> void:
 	_clear_gain()
 	var amount := run.last_increment_text().trim_prefix("≈")
-	gain.text = amount if amount.begins_with("≥") else "+" + amount
+	gain.text = amount if amount.begins_with("≥") or amount == "—" else "+" + amount
 	gain.add_theme_font_size_override("font_size", _font_size(numeric_font, gain.text, gain.size.x, 22, 14))
 	gain.modulate.a = 1.0
 	gain.show()

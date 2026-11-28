@@ -220,7 +220,13 @@ func _symbolic_bound(position: int, reached: int, from: int) -> String:
 		return ""
 	match Growth.key(position):
 		"square_partitions":
-			return str(Growth._partitions(400, true) - Growth._partitions(121, true)) if from == 0 and reached > 279 else ""
+			if from == 0 and reached > 279:
+				return str(Growth._partitions(400, true) - Growth._partitions(121, true))
+			# Partitions without a 1 are new. Every nonnegative solution
+			# 4x + 9y = 121 + reached is one, with one y in each group of four.
+			@warning_ignore("integer_division")
+			var minimum := reached / 36 + (reached % 36 + 121) / 36
+			return str(minimum) if minimum < SCIENTIFIC_LIMIT else _scientific(_log10(float(minimum)), 25, true)
 		"partitions", "plane_partitions":
 			return _format_amount(float(reached - from), false, 25).trim_prefix("≈") if reached - from < 1000000 else _scientific(_log10(float(reached - from)), 25, true)
 		"primes", "lattice_circle":

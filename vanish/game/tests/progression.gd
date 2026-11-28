@@ -213,7 +213,7 @@ func check_last_increments() -> bool:
 			run.step = point - 1
 			run.grow()
 			var delta := run.last_increment_text()
-			if delta.is_empty() or delta.begins_with("+") or delta.contains("Δ") or delta.contains("Q"):
+			if delta.is_empty() or delta == "—" or delta.begins_with("+") or delta.contains("Δ") or delta.contains("Q"):
 				push_error("%s at %d: unreadable increment %s" % [Growth.key(stage), point, delta])
 				passed = false
 		match Growth.key(stage):
