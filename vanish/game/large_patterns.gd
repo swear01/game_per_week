@@ -7,11 +7,8 @@ const GRAY := Color("#8a8678")
 const EDGE := Color("#625744")
 const SHADE := Color("#383125")
 const GRID := Vector2(72, 25)
-const MAX_TAPS := 9223372036854775807
+const FIB_PITCH := 2.55
 const BB4 := ["1RB", "1LB", "1LA", "0LC", "1RZ", "1LD", "1RD", "0RA"]
-
-
-static var _label_font: SystemFont
 
 
 class Diagram:
@@ -19,11 +16,9 @@ class Diagram:
 	var unit: float
 	var origin: Vector2
 	var bounds: Rect2
-	var font: Font
 
-	func _init(surface: Control, area: Rect2, numeric_font: Font) -> void:
+	func _init(surface: Control, area: Rect2) -> void:
 		canvas = surface
-		font = numeric_font
 		bounds = area
 		unit = minf(bounds.size.x / GRID.x, bounds.size.y / GRID.y)
 		origin = bounds.get_center() - GRID * unit * 0.5
@@ -68,42 +63,24 @@ class Diagram:
 		var at := (origin + Vector2(x, y) * unit).clamp(bounds.position + margin, bounds.end - margin)
 		canvas.draw_circle(at, radius, ink, true, -1, true)
 
-	func number(x: float, y: float, text: String, ink: Color = GOLD, span: float = 72.0) -> void:
-		var size := clampi(roundi(unit * 6.0), 7, 64)
-		var available := minf(bounds.size.x - 2, unit * span)
-		while size > 5 and (font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > available or font.get_height(size) > bounds.size.y - 2):
-			size -= 1
-		var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		var ascent := font.get_ascent(size)
-		var descent := font.get_descent(size)
-		var corner := origin + Vector2(x, y) * unit
-		corner.x = clampf(corner.x, bounds.position.x + 1, bounds.end.x - width - 1)
-		corner.y = clampf(corner.y + ascent, bounds.position.y + ascent + 1, bounds.end.y - descent - 1)
-		canvas.draw_string(font, corner, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
-
 
 static func draw(canvas: Control, key: String, step: int, phase: float, area: Rect2) -> void:
-	if area.size.x < 36 or area.size.y < 13:
+	if area.size.x < 30 or area.size.y < 12:
 		return
-	if _label_font == null:
-		_label_font = SystemFont.new()
-		_label_font.font_names = PackedStringArray(["Menlo", "Consolas", "monospace"])
-		_label_font.font_weight = 700
-	var p := Diagram.new(canvas, area, _label_font)
+	var p := Diagram.new(canvas, area)
 	var n := maxi(step, 0)
 	var ease := clampf(phase, 0, 1)
-	if area.size.x < 54 or area.size.y < 22:
-		_compact_parameter(p, key, n)
-		return
 	match key:
-		"fib", "double":
-			_copies(p, n, ease, key == "fib")
+		"fib":
+			_fibonacci(p, n, ease)
+		"double":
+			_double(p, n, ease)
 		"pi_digits":
 			_pi(p, n, ease)
 		"factorial":
 			_insert(p, n, ease)
 		"graphs":
-			_graph_choices(p, n)
+			_graph_choices(p, n, ease)
 		"square", "growing_power":
 			_powers(p, n, ease, key == "square")
 		"tower", "tower_double", "tower_in_tower":
@@ -126,34 +103,52 @@ static func draw(canvas: Control, key: String, step: int, phase: float, area: Re
 			return
 
 
-static func _copies(p: Diagram, n: int, phase: float, fibonacci: bool) -> void:
+static func _fibonacci(p: Diagram, n: int, phase: float) -> void:
+	var source := Vector2(7, 5.5)
+	var result := Vector2(34, 11)
+	if n > 5:
+		# Keep the same total width when literal cells no longer fit. The
+		# ratio follows r → 1/(1+r) and stabilizes at screen precision.
+		var ratio := 1.0
+		for i in range(1, mini(n, 40)):
+			ratio = 1.0 / (1.0 + ratio)
+		var total_width := 13.0 * FIB_PITCH
+		var base_width := total_width / (1.0 + ratio)
+		var added_width := total_width - base_width
+		p.box(source.x, source.y, added_width, 2.5, EDGE)
+		p.box(result.x, result.y, base_width, 2.5, GRAY)
+		p.box(result.x + base_width, result.y, added_width, 2.5, GOLD)
+		return
+
+	var earlier := 1
+	var current := 1
+	for i in range(n - 1):
+		var next := earlier + current
+		earlier = current
+		current = next
+	_fib_tiles(p, source, earlier, EDGE)
+	_fib_tiles(p, result, current, GRAY)
+	if n == 0:
+		_fib_tiles(p, source, earlier, GOLD)
+		return
+
+	# Leave the current term in place. Its new neighbors are the earlier term,
+	# which slides above the row and joins it at the open end.
+	var end := result + Vector2(current * FIB_PITCH, 0)
+	var slide := minf(phase / 0.75, 1)
+	var drop := clampf((phase - 0.55) / 0.45, 0, 1)
+	var moving := Vector2(lerpf(source.x, end.x, slide), lerpf(source.y, end.y, drop))
+	_fib_tiles(p, moving, earlier, GOLD)
+
+
+static func _fib_tiles(p: Diagram, at: Vector2, amount: int, ink: Color) -> void:
+	for i in range(amount):
+		p.box(at.x + i * FIB_PITCH, at.y, FIB_PITCH - 0.55, 2.5, ink)
+
+
+static func _double(p: Diagram, n: int, phase: float) -> void:
 	if n == 0:
 		_pile(p, 33, 15, 1, GOLD)
-		if fibonacci:
-			_pile(p, 26, 15, 1, GRAY)
-		return
-	if fibonacci:
-		# F(n) and F(n+1) are the inputs to the displayed F(n+2).
-		var a := 1
-		var b := 1
-		for i in range(mini(n - 1, 5)):
-			var next := a + b
-			a = b
-			b = next
-		_pile(p, 10, 17, mini(a, 6), GRAY)
-		_pile(p, 22, 17, mini(b, 6), GOLD)
-		p.box(18, 11, 3, 1, EDGE)
-		p.box(19, 10, 1, 3, EDGE)
-		p.arrow(33, 11, 9)
-		var arrive := lerpf(45.0, 50.0, phase) if n <= 5 else 50.0
-		_pile(p, arrive, 18, mini(a, 6), GRAY)
-		_pile(p, arrive + 8, 18, mini(b, 6), GOLD)
-		if n >= 5:
-			if n >= 6:
-				_dots(p, 10, 18)
-			_dots(p, 22, 18)
-			_dots(p, 64, 17)
-			p.number(45, 20, _small_number(n, 2), GRAY)
 		return
 	var prior := 1 << mini(n - 1, 2)
 	_pile(p, 20, 17, prior, GRAY)
@@ -161,11 +156,6 @@ static func _copies(p: Diagram, n: int, phase: float, fibonacci: bool) -> void:
 	_pile(p, 49, 18, prior, GRAY)
 	var arrive := lerpf(51.0, 58.0, phase) if n <= 3 else 58.0
 	_pile(p, arrive, 18, prior, GOLD)
-	if n > 3:
-		_dots(p, 21, 18)
-		_dots(p, 65, 17)
-		p.number(47, 7, "2", GRAY)
-		p.number(53, 3, _small_number(n), GOLD)
 
 
 static func _pile(p: Diagram, x: float, floor_y: float, amount: int, ink: Color) -> void:
@@ -174,27 +164,29 @@ static func _pile(p: Diagram, x: float, floor_y: float, amount: int, ink: Color)
 
 
 static func _pi(p: Diagram, n: int, phase: float) -> void:
-	var count := mini(n, 6) + 1
 	var known := Growth.PI_DIGITS.length()
 	if n >= known + 6:
-		# Preserve the known prefix once the moving window no longer contains a known digit.
-		p.number(7, 10, Growth.PI_DIGITS.left(3), GRAY)
-		_dots(p, 24, 13)
-		p.frame(42, 7, 7, 12, GOLD)
-		p.number(44, 10, "…", GOLD)
-	else:
-		for i in range(count):
-			var x := float(6 + i * 8)
-			var active := i == count - 1
-			var index := n - count + 1 + i
-			var symbol: String = Growth.PI_DIGITS[index] if index < known else "…"
-			p.frame(x, 7, 7, 12, GOLD if active else EDGE)
-			var y := lerpf(8.0, 10.0, phase) if active and n > 0 and n < known else 10.0
-			p.number(x + 2, y, symbol, GOLD if active else GRAY)
-		if n >= 7:
-			_dots(p, 64, 13)
-	if n >= 7:
-		p.number(52, 19, _small_number(n, 1), GRAY)
+		# Keep the known prefix separate from the new, uncomputed place.
+		for i in range(3):
+			_digit_slot(p, 12 + i * 8, i, false, 1.0)
+		_digit_slot(p, 53, -1, true, 1.0)
+		return
+	var count := mini(n, 6) + 1
+	for slot in count:
+		var active := slot == count - 1
+		var index := n - count + 1 + slot
+		var rise := phase if active and n > 0 and n < known else 1.0
+		_digit_slot(p, 8 + slot * 8, index, active, rise)
+
+
+static func _digit_slot(p: Diagram, x: float, index: int, active: bool, rise: float) -> void:
+	p.frame(x, 5, 7, 15, GOLD if active else EDGE)
+	if index < 0 or index >= Growth.PI_DIGITS.length():
+		return
+	# Height encodes its digit; the baseline distinguishes a known zero from an unknown place.
+	var digit := int(Growth.PI_DIGITS[index])
+	var height := (1.0 + digit * 1.25) * rise
+	p.box(x + 1.5, 19 - height, 4, height, GOLD if active else GRAY)
 
 
 static func _insert(p: Diagram, n: int, phase: float) -> void:
@@ -211,33 +203,35 @@ static func _insert(p: Diagram, n: int, phase: float) -> void:
 		p.box(x, 17, 1, 2, GOLD if i == selected else EDGE)
 	var y := lerpf(4.0, 12.0, phase) if n <= 5 else 12.0
 	p.box(8 + selected * 8, y, 2, 3, GOLD)
-	if n > 5:
-		_dots(p, 64, 17)
-		p.number(50, 2, _small_number(n, 2), GOLD)
 
 
-static func _graph_choices(p: Diagram, n: int) -> void:
+static func _graph_choices(p: Diagram, n: int, phase: float) -> void:
 	var points := [
-		Vector2(13, 12), Vector2(18, 5), Vector2(18, 19),
-		Vector2(26, 7), Vector2(26, 17), Vector2(32, 12),
+		Vector2(19, 12), Vector2(28, 7), Vector2(28, 18),
+		Vector2(21, 4), Vector2(21, 21), Vector2(37, 14),
 	]
 	var limit := mini(n, points.size() - 1) + 1
-	var destination := Vector2(54, 12)
+	var destination := Vector2(57, 12)
+	var progress := phase if n > 0 and n < points.size() else 1.0
 	for i in range(limit):
-		if i > 0:
-			p.stroke(points[i - 1], points[i])
-		p.stroke(points[i], destination, GOLD if i == 0 else SHADE)
-		p.dot(points[i].x, points[i].y, GRAY)
-	p.dot(destination.x, destination.y, GOLD)
-	if n >= points.size():
-		_dots(p, 25, 21)
-	p.number(50, 4, "2", GRAY)
-	p.number(55, 0, _small_number(n, 1), GOLD)
+		for j in range(i):
+			p.stroke(points[j], points[i], SHADE)
+	for i in range(limit):
+		# A dash marks an available edge to the new point, not a chosen edge.
+		var from_new: Vector2 = points[i] - destination
+		var direction := from_new.normalized()
+		var length := (from_new.length() - 3.0) * progress
+		var start := 2.5
+		while start + 0.6 < length:
+			p.stroke(destination + direction * start, destination + direction * minf(start + 2.0, length), GOLD)
+			start += 4.0
+		p.dot(points[i].x, points[i].y, GRAY, 1.4)
+	p.dot(destination.x, destination.y, GOLD, lerpf(1.4, 2.0, progress))
 
 
 static func _powers(p: Diagram, n: int, phase: float, square: bool) -> void:
 	if n == 0:
-		p.number(34, 10, "2", GOLD)
+		_pile(p, 34, 16, 2, GOLD)
 		return
 	if square:
 		# The previous value is the side of the square; five cells are only a sample.
@@ -249,27 +243,17 @@ static func _powers(p: Diagram, n: int, phase: float, square: bool) -> void:
 				var current := y == amount - 1 or x == amount - 1
 				var y_offset := (1 - phase) * 2 if n <= 2 and y == amount - 1 else 0.0
 				p.box(46 + x * 3, 5 + y * 3 - y_offset, 2, 2, GOLD if current else EDGE)
-		if n >= 3:
-			_dots(p, 64, 18)
-			p.number(6, 7, "2", GRAY)
-			p.number(11, 4, "2", GRAY)
-			p.number(16, 0, _small_number(n, -1), GOLD)
 		return
 	var amount := mini(n, 4) + 1
 	for i in range(amount):
 		p.frame(8 + i * 6, 10, 5, 7, GRAY if i < amount - 1 else GOLD)
-	if n >= 5:
-		_dots(p, 38, 15)
 	p.arrow(43, 12, 7)
 	p.frame(53, 10, 7, 9, GRAY)
-	p.number(52, 4, _small_number(n, 1), GOLD)
 
 
 static func _towers(p: Diagram, key: String, n: int, phase: float) -> void:
 	if key == "tower":
 		_stack(p, 36, 20, mini(n, 8) + 1, phase if n > 0 else 1.0)
-		if n >= 8:
-			p.number(48, 12, _small_number(n, 1), GOLD)
 		return
 	if key == "tower_double":
 		var old_height := 1 << mini(maxi(n - 1, 0), 4)
@@ -277,9 +261,6 @@ static func _towers(p: Diagram, key: String, n: int, phase: float) -> void:
 		_stack(p, 19, 20, old_height, 1)
 		p.arrow(29, 12, 15)
 		_stack(p, 54, 20, new_height, phase if n > 0 else 1.0)
-		if n > 3:
-			p.number(48, 20, "2", GRAY)
-			p.number(53, 17, _small_number(n), GOLD)
 		return
 	var outer_height: int = [2, 4, 16, 65536][mini(n, 3)]
 	_stack(p, 17, 20, mini(n, 8) + 1, phase if n > 0 else 1.0)
@@ -287,8 +268,6 @@ static func _towers(p: Diagram, key: String, n: int, phase: float) -> void:
 	p.stroke(Vector2(35, 13), Vector2(35, 6), GOLD)
 	p.arrow(35, 6, 12)
 	_stack(p, 55, 20, outer_height, phase if n == 1 else 1.0)
-	if n > 2:
-		p.number(7, 19, _small_number(n, 1), GOLD)
 
 
 static func _stack(p: Diagram, center: int, floor_y: int, height: int, phase: float) -> void:
@@ -301,8 +280,6 @@ static func _stack(p: Diagram, center: int, floor_y: int, height: int, phase: fl
 			y -= (1 - phase) * 2
 		p.box(center - width * 0.5, y, width, 1, GOLD if newest else GRAY)
 		p.box(center - width * 0.5, y + 1, width, 1, SHADE)
-	if height > bands:
-		_dots(p, center + 8, floor_y - 5)
 
 
 static func _arrow_operation(p: Diagram, key: String, n: int, phase: float) -> void:
@@ -317,55 +294,48 @@ static func _arrow_operation(p: Diagram, key: String, n: int, phase: float) -> v
 		"variable_arrows":
 			rank = mini(n, 5) + 1
 	var variable := key == "variable_arrows"
-	var y := lerpf(5.0, 7.0, phase) if variable and n >= 1 and n <= 5 else 7.0
-	p.number(11, 7, "3" if variable else "2", GRAY)
-	p.arrows_up(20, 7, rank - 1, GOLD)
-	p.arrows_up(20 + (rank - 1) * 4, y, 1, GOLD)
-	p.number(50, 7, "3" if variable else _small_number(n, 1 if rank == 3 else 2), GRAY)
-	if variable:
-		if n >= 6:
-			_dots(p, 44, 10)
-		p.number(29, 15, _small_number(n, 1), GOLD)
-	else:
-		p.stroke(Vector2(34, 13), Vector2(34, 15), EDGE)
-		p.arrows_up(23, 16, rank - 1, GRAY)
-		p.arrow(49, 17, 9, EDGE)
+	var y := lerpf(4.0, 6.0, phase) if variable and n >= 1 and n <= 5 else 6.0
+	_pile(p, 8, 13, 3 if variable else 2, GRAY)
+	var origin := 35.0 - rank * 2
+	p.arrows_up(origin, 6, rank - 1, GOLD)
+	p.arrows_up(origin + (rank - 1) * 4, y, 1, GOLD)
+	var operand := 3 if variable else mini(n, 5) + (1 if rank == 3 else 2)
+	_pile(p, 55, 17, operand, GRAY)
+	if not variable:
+		p.stroke(Vector2(35, 12), Vector2(35, 15))
+		p.arrows_up(35.0 - (rank - 1) * 2, 16, rank - 1, GRAY)
+		p.arrow(49, 19, 10, EDGE)
 
 
 static func _feedback(p: Diagram, key: String, n: int) -> void:
 	if key == "conway":
-		p.number(9, 7, "3", GRAY)
-		p.number(23, 7, "3", GRAY)
-		p.number(35, 7, _small_number(n, 1), GOLD, 24)
-		p.number(62, 7, "3", GRAY)
-		for x in [14, 28, 54]:
-			p.arrow(x, 15, 7, EDGE)
-		p.stroke(Vector2(62, 13), Vector2(62, 20), EDGE)
-		p.stroke(Vector2(62, 20), Vector2(41, 20), EDGE)
-		p.stroke(Vector2(41, 20), Vector2(41, 14), GOLD)
+		for i in range(4):
+			_pile(p, 8 + i * 17, 14, mini(n, 5) + 1 if i == 2 else 3, GOLD if i == 2 else GRAY)
+			if i < 3:
+				p.arrow(15 + i * 17, 11, 7, EDGE)
+		p.stroke(Vector2(61, 15), Vector2(61, 21))
+		p.stroke(Vector2(61, 21), Vector2(44, 21))
+		p.stroke(Vector2(44, 21), Vector2(44, 15), GOLD)
 		return
 	if n == 0:
-		p.number(34, 10, "4", GOLD)
+		_pile(p, 34, 17, 4, GOLD)
 		return
-	p.number(9, 8, "3", GRAY)
-	if n == 1:
-		p.arrows_up(20, 8, 4, GOLD)
-	else:
-		p.arrows_up(22, 9, 1, GOLD)
-		p.number(16, 1, "G" + _small_number(n, -1), GOLD)
-	p.number(38, 8, "3", GRAY)
-	p.arrow(42, 10, 7)
-	p.frame(48, 6, 24, 9, GOLD)
-	var output := ("G" if p.unit >= 1 else "") + _small_number(n)
-	p.number(49, 8, output, GOLD, 22)
-	p.stroke(Vector2(60, 16), Vector2(60, 20), GOLD)
-	p.stroke(Vector2(60, 20), Vector2(23, 20), GOLD)
+	_pile(p, 9, 14, 3, GRAY)
+	p.arrows_up(20, 8, 4 if n == 1 else 1, GOLD)
+	_pile(p, 38, 14, 3, GRAY)
+	p.arrow(44, 10, 7)
+	p.frame(53, 6, 12, 9, GOLD)
+	p.box(56, 9, 6, 3, GOLD)
+	p.stroke(Vector2(59, 16), Vector2(59, 20), GOLD)
+	p.stroke(Vector2(59, 20), Vector2(23, 20), GOLD)
 	p.stroke(Vector2(23, 20), Vector2(23, 14), GOLD)
 
 
 static func _bowers(p: Diagram, n: int) -> void:
 	if n == 0:
-		p.number(32, 10, "27", GOLD)
+		p.frame(27, 6, 18, 11, EDGE)
+		for i in range(2):
+			p.box(31 + 6 * i, 9, 3, 5, GOLD)
 		return
 	var amount := mini(n, 3) + 2
 	p.frame(6, 7, 25, 10, EDGE)
@@ -377,15 +347,11 @@ static func _bowers(p: Diagram, n: int) -> void:
 		for x in range(3):
 			var active := x == 2 and y == 1
 			p.frame(48 + x * 5, 7 + y * 5, 4, 4, WHITE if active else EDGE)
-	if n > 3:
-		p.number(10, 20, _small_number(n, 2), GOLD)
 
 
 static func _rewrite(p: Diagram, n: int) -> void:
 	p.frame(7, 6, 19, 13, EDGE)
 	p.frame(46, 6, 19, 13, EDGE)
-	p.number(11, 0, "2", GRAY)
-	p.number(50, 0, "3", GOLD)
 	for i in range(4):
 		p.box(11 + 3 * i, 10 - i, 2, 7 + i, GRAY)
 		if i != 3:
@@ -393,7 +359,6 @@ static func _rewrite(p: Diagram, n: int) -> void:
 		else:
 			p.box(50 + 3 * i, 20, 2, 1, EDGE)
 	p.arrow(30, 12, 12)
-	p.number(30, 18, _small_number(n, 1), GRAY)
 
 
 static func _graph_sequence(p: Diagram, n: int, trees: bool) -> void:
@@ -410,9 +375,6 @@ static func _graph_sequence(p: Diagram, n: int, trees: bool) -> void:
 			p.dot(58, 6, GRAY)
 			p.dot(52, 16, GRAY)
 			p.dot(64, 16, GRAY)
-			_dots(p, 64, 20)
-		if n > 2:
-			p.number(8, 19, _small_number(n, 1), GOLD)
 		return
 	# One representative subcubic graph followed by smaller candidates.
 	var points := [Vector2(12, 8), Vector2(23, 8), Vector2(12, 17), Vector2(23, 17)]
@@ -424,12 +386,9 @@ static func _graph_sequence(p: Diagram, n: int, trees: bool) -> void:
 	var limit := mini(n, 3) + 2
 	for i in range(limit):
 		p.dot(46 + i * 4, 11, GOLD if i == limit - 1 else GRAY)
-	# P + n is the vertex allowance carried from TREE.
-	p.frame(45, 17, 4, 3, GRAY)
-	p.box(45, 20, 1, 2, GRAY)
-	p.box(51, 19, 3, 1, EDGE)
-	p.box(52, 18, 1, 3, EDGE)
-	p.number(57, 17, _small_number(n), GOLD)
+	# The gray sample graph is separate from the gold vertices in the new allowance.
+	for i in range(mini(n, 5)):
+		p.box(46 + i * 4, 17, 2, 2, GOLD)
 
 
 static func _beaver(p: Diagram, key: String, n: int, phase: float) -> void:
@@ -437,14 +396,12 @@ static func _beaver(p: Diagram, key: String, n: int, phase: float) -> void:
 		_draw_busy_tape(p, n, phase)
 		return
 	# The state allowance is known here. The pictures are machine classes, not tapes of winners.
-	var states := _small_number(n, -103 if key == "busy_beaver" else 1)
-	for i in range(4):
-		var x := 13 + 10 * i
-		p.frame(x, 9, 6, 6, EDGE)
-		if i < 3:
-			p.stroke(Vector2(x + 6, 12), Vector2(x + 9, 12), GRAY)
-	_dots(p, 50, 12)
-	p.number(52, 18, states, GOLD)
+	var states := mini(n - 103, 6) if key == "busy_beaver" else mini(n, 5) + 1
+	for i in range(states):
+		var x := 36 - (states - 1) * 4.5 + 9 * i
+		p.frame(x - 3, 9, 6, 6, GOLD if i == states - 1 else EDGE)
+		if i < states - 1:
+			p.stroke(Vector2(x + 3, 12), Vector2(x + 6, 12), GRAY)
 	if key == "beeping_beaver":
 		p.stroke(Vector2(29, 6), Vector2(43, 6), EDGE)
 		p.box(45, 3, 2, 4, GOLD)
@@ -476,7 +433,6 @@ static func _draw_busy_tape(p: Diagram, n: int, phase: float) -> void:
 		p.box(29 + 4 * i, 17, 2, 2, GOLD if i == state else EDGE)
 	if state < 0:
 		p.box(46, 17, 3, 2, WHITE)
-	p.number(52, 17, _small_number(n), GRAY)
 
 
 static func _busy_tape(steps: int) -> Dictionary:
@@ -505,48 +461,8 @@ static func _busy_tape(steps: int) -> Dictionary:
 
 static func _symbol_budget(p: Diagram, n: int, phase: float) -> void:
 	var length := mini(8, n)
-	p.frame(8, 7, 32, 12, EDGE)
+	p.frame(15, 6, 42, 12, EDGE)
 	for i in range(length):
-		var x := 11 + i * 3
-		var y := lerpf(9.0, 11.0, phase) if n <= 8 and i == length - 1 else 11.0
-		p.box(x, y, 1, 4, GOLD if i == length - 1 else GRAY)
-	var length_text := _small_number(n)
-	p.number(52, 11, length_text, GRAY)
-	if n > 8:
-		_dots(p, 44, 13)
-
-
-static func _compact_parameter(p: Diagram, key: String, n: int) -> void:
-	var offset := 1
-	match key:
-		"fib", "factorial", "quadruple", "quintuple", "sextuple", "bowers":
-			offset = 2
-		"square":
-			offset = -1 if n > 0 else 0
-		"double", "tower_double", "graham", "sscg", "rayo":
-			offset = 0
-		"busy_beaver":
-			offset = -103 if n > 107 else 0
-		"pi_digits", "graphs", "growing_power", "tower", "tower_in_tower", "triple", "variable_arrows", "conway", "fast_goodstein", "tree", "beeping_beaver", "oracle_beaver":
-			pass
-		_:
-			return
-	var text := _small_number(n, offset)
-	p.number(31 - text.length() * 2, 8, text, GOLD)
-
-
-static func _small_number(n: int, offset: int = 0) -> String:
-	var text: String
-	if offset > 0 and n > MAX_TAPS - offset:
-		# Offsets are at most three. Near int64's ceiling they affect only this tail.
-		var full := str(n)
-		text = full.left(full.length() - 6) + "%06d" % (int(full.right(6)) + offset)
-	else:
-		text = str(n + offset)
-	# Include the digit count when shortened so equal prefixes and tails at different scales stay distinct.
-	return "%s…%s[%d]" % [text.left(2), text.right(2), text.length()] if text.length() > 7 else text
-
-
-static func _dots(p: Diagram, x: float, y: float) -> void:
-	for i in range(3):
-		p.dot(x + 2 * i, y, GOLD, 0.35)
+		var x := 18 + i * 4.5
+		var height := phase * 5.0 if n <= 8 and i == length - 1 else 5.0
+		p.box(x, 14 - height, 2, height, GOLD if i == length - 1 else GRAY)

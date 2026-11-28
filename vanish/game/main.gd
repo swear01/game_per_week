@@ -22,6 +22,8 @@ var planned_score_height := 0.0
 var reference_size := Vector2i.ZERO
 var backing_scale := 1.0
 var detail_content := ""
+var showing_controls := false
+var gain_tween: Tween
 
 @onready var advance: Button = $Advance
 @onready var action_label: Label = $Advance/Action
@@ -32,6 +34,8 @@ var detail_content := ""
 @onready var score: Label = $Grow/Score
 @onready var focus_mark: ColorRect = $Grow/Focus
 @onready var stage_label: Label = $Stage
+@onready var stage_count: Label = $StageCount
+@onready var gain: Label = $Gain
 @onready var hint: Label = $Hint
 @onready var tower: Tower = $Tower
 @onready var ending: Label = $Ending
@@ -95,48 +99,81 @@ func _update_canvas_size() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
-		if details.visible and details.get_global_rect().has_point(event.position):
+		if details.visible:
+			if not details.get_global_rect().has_point(event.position):
+				details.hide()
+				get_viewport().set_input_as_handled()
 			return
 		keyboard_focus = false
-		details.hide()
 		_show_focus()
 	if not event is InputEventKey:
 		return
 	if event.pressed and not event.echo:
 		keyboard_focus = true
 		_show_focus()
-		if event.keycode == KEY_TAB:
-			details.hide()
-		if event.keycode == KEY_F1:
-			get_viewport().set_input_as_handled()
-			_toggle_details()
-			return
-		if details.visible:
-			if event.keycode == KEY_ESCAPE:
-				details.hide()
+		match event.keycode:
+			KEY_ESCAPE:
+				if details.visible:
+					details.hide()
+				else:
+					_open_controls()
 				get_viewport().set_input_as_handled()
 				return
-			if event.keycode in [KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN]:
-				var stride := 24 if event.keycode in [KEY_UP, KEY_DOWN] else roundi(detail_scroll.size.y * 0.8)
-				detail_scroll.scroll_vertical += -stride if event.keycode in [KEY_UP, KEY_PAGEUP] else stride
+			KEY_F1:
+				if details.visible and showing_controls:
+					details.hide()
+				_toggle_details()
 				get_viewport().set_input_as_handled()
 				return
+	if details.visible:
+		if event.pressed and event.keycode in [KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN]:
+			var stride := 24 if event.keycode in [KEY_UP, KEY_DOWN] else roundi(detail_scroll.size.y * 0.8)
+			detail_scroll.scroll_vertical += -stride if event.keycode in [KEY_UP, KEY_PAGEUP] else stride
+		get_viewport().set_input_as_handled()
+		return
 	if event.keycode not in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		return
 	get_viewport().set_input_as_handled()
-	if not event.pressed or event.echo:
-		return
-	details.hide()
-	if event.keycode == KEY_SPACE:
-		_grow_once()
-	else:
-		_advance_once()
+	if event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			_grow_once()
+		else:
+			_advance_once()
+
+func _open_controls() -> void:
+	showing_controls = true
+	detail_content = "空白鍵　成長\nEnter　 躍遷\nF1　　 數列詳情\nEsc　　 繼續遊戲"
+	if run.won:
+		detail_content = "Enter　再玩\nEsc　　返回"
+	_layout_details(0)
+	details.show()
 
 func _grow_once() -> void:
 	if run.won:
 		return
 	run.grow()
 	_refresh()
+	_flash_gain()
+
+func _clear_gain() -> void:
+	if gain_tween:
+		gain_tween.kill()
+	gain.hide()
+	hint.visible = not run.won
+
+func _flash_gain() -> void:
+	_clear_gain()
+	var amount := run.last_increment_text().trim_prefix("≈")
+	gain.text = amount if amount.begins_with("≥") or amount == "—" else "+" + amount
+	gain.add_theme_font_size_override("font_size", _font_size(numeric_font, gain.text, gain.size.x, 22, 14))
+	gain.modulate.a = 1.0
+	gain.show()
+	hint.hide()
+	gain_tween = create_tween()
+	gain_tween.tween_interval(0.5)
+	gain_tween.tween_property(gain, "modulate:a", 0.0, 0.16)
+	gain_tween.tween_callback(gain.hide)
+	gain_tween.tween_callback(hint.set_visible.bind(not run.won))
 
 func _advance_once() -> void:
 	if run.won:
@@ -150,6 +187,7 @@ func _advance_once() -> void:
 			get_tree().create_timer(0.75).timeout.connect(_unlock_replay)
 	else:
 		return
+	_clear_gain()
 	_refresh()
 
 func _unlock_replay() -> void:
@@ -157,28 +195,27 @@ func _unlock_replay() -> void:
 	_refresh()
 
 func _refresh() -> void:
-	for item in [grow, stage_label, hint, tower, price, track]:
+	for item in [grow, stage_label, stage_count, hint, tower, price, track]:
 		item.visible = not run.won
 	ending.visible = run.won
 	if run.won:
 		action_label.text = "再玩"
 		advance.accessibility_name = "再玩"
-		advance.tooltip_text = "Enter"
 		advance.disabled = replay_locked
 		return
 
-	score_text = run.balance_text()
+	score_text = run.balance_text().trim_prefix("≈")
 	var target := run.target()
 	var ready := run.ready()
 	var last := run.stage == Growth.count() - 1
-	cost = "" if last else run.cost_text()
+	cost = "" if last else run.cost_text().trim_prefix("≈")
 	price.visible = not cost.is_empty()
 	var skip := run.can_skip()
-	var next_stage := run.stage + (2 if skip else 1)
 	advance.disabled = not ready
 	action_label.text = "Vanish" if last else "躍遷"
 	action_label.add_theme_color_override("font_color", GOLD if ready else MUTED)
 	stage_label.text = Growth.title(run.stage)
+	stage_count.text = "%d / %d" % [run.stage + 1, Growth.count()]
 	grow.accessibility_name = "成長，餘額 " + score_text
 	advance.accessibility_name = "Vanish" if last else "躍遷，扣除 " + cost
 	hint.text = ""
@@ -190,16 +227,13 @@ func _refresh() -> void:
 	progress_fraction = clampf(float(run.step) / maxf(1.0, float(target)), 0.0, 1.0)
 	progress.color = GOLD if ready else MUTED
 	progress.size.x = track.size.x * progress_fraction
-	if tower.series != run.stage:
-		tower.mark = Tower.signature(tower.series, tower.step) if run.stage > 0 else 0
 	tower.clip_contents = Growth.key(run.stage) not in ["harmonic", "inverse_sqrt"]
 	tower.show_progress(run.stage, run.step, target)
-	grow.tooltip_text = "空白鍵成長 · F1 詳情"
-	advance.tooltip_text = "Enter 完成 · F1 詳情" if last else "到 %s · F1 詳情" % Growth.title(next_stage)
 	_fit_text()
 	_show_focus()
 
 func _toggle_details() -> void:
+	showing_controls = false
 	if run.won or details.visible:
 		details.hide()
 		return
@@ -220,18 +254,22 @@ func _toggle_details() -> void:
 		stage_record = "\n上系 %s　%s" % [run.previous_title, run.previous_record]
 	var comparison := run.comparison()
 	var comparison_line := "" if comparison.is_empty() else "\n" + comparison
-	var growth_info := "%s%s%s\n\n%s" % [run.display_rule(), stage_record, comparison_line, run.balance_detail()]
-	detail_content = leap_info + "\n\n" + growth_info
+	var rule := run.display_rule()
+	if run.stage == 0:
+		rule += "\n" + Growth.value(0, run.step)
+	var growth_info := "%s%s%s\n\n%s" % [rule, stage_record, comparison_line, run.balance_detail()]
+	detail_content = leap_info + "\n\n" + growth_info + "\n\n畫面數字依量級取近似值；≥ 表示已知下界。"
 	_layout_details(0)
 	details.show()
 
 func _layout_details(scroll_position: int) -> void:
-	var content_width := minf(size.x - 28.0, 660.0)
+	var content_width := minf(size.x - 28.0, 250.0 if showing_controls else 660.0)
 	var line_width := roundi(content_width - 46.0)
 	detail_label.text = _wrap_details(detail_content, line_width)
 	var available_height := minf(size.y * 0.46, 234.0)
 	var panel_height := minf(available_height, 30.0 + detail_label.text.get_slice_count("\n") * 20.0)
-	_place(details, (size.x - content_width) / 2.0, size.y - panel_height - 14.0, content_width, panel_height)
+	var top := (size.y - panel_height) * 0.5 if showing_controls else size.y - panel_height - 14.0
+	_place(details, (size.x - content_width) / 2.0, top, content_width, panel_height)
 	detail_scroll.set_deferred("scroll_vertical", scroll_position)
 
 func _wrap_details(content: String, limit: float) -> String:
@@ -265,7 +303,9 @@ func _layout() -> void:
 	var art_top := score_top + score_height + 26.0
 	var bottom := height - margin
 
-	_place(stage_label, left, margin, content_width - leap_width - 16.0, header_height)
+	var title_width := content_width - leap_width - 16.0
+	_place(stage_label, left, margin, title_width, header_height - 19.0)
+	_place(stage_count, left, margin + header_height - 19.0, title_width, 19.0)
 	_place(advance, left + content_width - leap_width, margin, leap_width, header_height)
 	_place(action_label, 14.0, header_height * 0.13, leap_width - 28.0, header_height * 0.40)
 	_place(price, 14.0, header_height * 0.53, leap_width - 28.0, header_height * 0.29)
@@ -278,6 +318,7 @@ func _layout() -> void:
 	_place(score, 0.0, 0.0, content_width, planned_score_height)
 	_place(focus_mark, (content_width - 26.0) / 2.0, score_height + 1.0, 26.0, 2.0)
 	_place(hint, left, score_top + score_height + 7.0, content_width, 18.0)
+	_place(gain, left, score_top + score_height + 1.0, content_width, 27.0)
 	_place(tower, left, art_top, content_width, maxf(0.0, bottom - art_top))
 	tower.stack_headroom = tower.position.y
 	tower.queue_redraw()
@@ -294,22 +335,12 @@ func _place(item: Control, x: float, y: float, width: float, height: float) -> v
 func _compact(value: String, max_width: float, smallest: int, fallback: String) -> String:
 	if _measure(numeric_font, value, smallest) <= max_width:
 		return value
-	var digits := value.replace(",", "").replace(" ", "")
-	if digits.length() > 8 and digits.is_valid_int():
-		return "≈%s.%s×10^%d" % [digits[0], digits.substr(1, 3), digits.length() - 1]
 	return fallback
 
 
-func _debit(amount: String) -> String:
-	if amount.contains(" + ") or amount.contains(" − ") or amount.contains(" - "):
-		return "−(" + amount + ")"
-	if amount.begins_with("≈"):
-		return "≈−" + amount.trim_prefix("≈")
-	return "−" + amount
-
 func _fit_text() -> void:
 	var score_width := maxf(1.0, score.size.x - 14.0)
-	score.text = _compact(score_text, score_width, 28, run.compact_balance())
+	score.text = _compact(score_text, score_width, 28, run.compact_balance().trim_prefix("≈"))
 	var score_max := maxi(23, mini(146, floori(planned_score_height * 0.84)))
 	var pixels := _font_size(numeric_font, score.text, score_width, score_max, 23)
 	while pixels > 23 and numeric_font.get_height(pixels) > planned_score_height - 2.0:
@@ -317,7 +348,7 @@ func _fit_text() -> void:
 	score.add_theme_font_size_override("font_size", pixels)
 	score.size.y = planned_score_height
 	var cost_width := maxf(1.0, price.size.x - 4.0)
-	price.text = "" if cost.is_empty() else _debit(_compact(cost, cost_width - 10.0, 15, run.compact_cost()))
+	price.text = "" if cost.is_empty() else _compact(cost, cost_width, 15, run.compact_cost().trim_prefix("≈"))
 	price.add_theme_font_size_override("font_size", _font_size(numeric_font, price.text, cost_width, 19, 12))
 	stage_label.add_theme_font_size_override("font_size", _font_size(text_font, stage_label.text, stage_label.size.x, 28, 15))
 	action_label.add_theme_font_size_override("font_size", clampi(floori(advance.size.y * 0.30), 19, 28))
@@ -351,6 +382,8 @@ func _style_controls() -> void:
 	_set_style(action_label, text_font, 22, GOLD)
 	_set_style(price, numeric_font, 16, MUTED)
 	_set_style(hint, text_font, 13, MUTED)
+	_set_style(stage_count, numeric_font, 15, MUTED)
+	_set_style(gain, numeric_font, 22, GOLD)
 	_set_style(score, numeric_font, 96, WHITE)
 	_set_style(ending, text_font, 36, WHITE)
 	_set_style(detail_label, text_font, 14, WHITE)

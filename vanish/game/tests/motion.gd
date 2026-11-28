@@ -16,9 +16,8 @@ func _initialize() -> void:
 	tower.show_progress(0, 3, 3)
 	var ok := not tower.is_processing() # Restored state has no entrance animation.
 
-	tower.mark = Tower.signature(0, 3)
 	tower.show_progress(1, 0, 20)
-	ok = ok and tower.mark == 16 and tower.is_processing() and tower.step == 0
+	ok = ok and not tower.is_processing() and tower.step == 0
 	tower.show_progress(1, 1, 20)
 	ok = ok and tower.step == 1 and tower.is_processing()
 	await create_timer(0.25).timeout

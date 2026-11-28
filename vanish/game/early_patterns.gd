@@ -13,23 +13,18 @@ const WHITE := Color("#e9e6dd")
 const INT_MAX := 0x7fffffffffffffff
 const PRIME_BASES := [2, 325, 9375, 28178, 450775, 9780504, 1795265022]
 
-static var _golomb := PackedInt64Array([0, 1])
-static var _prefix := PackedInt64Array([0, 1])
-static var _weighted := PackedInt64Array([0, 1])
-static var _folded := PackedInt64Array([0, 1])
-
 static func draw(c: CanvasItem, key: String, now: int, before: int, e: float, a: Rect2) -> void:
 	match key:
 		"golomb": golomb(c, now, before, e, a)
-		"wave": wave(c, now, a)
+		"wave": wave(c, now, before, e, a)
 		"log_add": log_add(c, now, a)
-		"triangular": triangular(c, now, a)
+		"triangular": triangular(c, now, before, e, a)
 		"rule90": rule90(c, now, a)
 		"primes": primes(c, now, a)
 		"lattice_circle": lattice(c, now, before, e, a)
 		"sandpile": sandpile(c, now, before, e, a)
 		"square_partitions": squares(c, Growth.square_partition_size(now), a)
-		"partitions": ferrers(c, now + 3, a)
+		"partitions": ferrers(c, now, before, e, a)
 		"plane_partitions": plane(c, now + 3, a)
 		_: return
 
@@ -38,76 +33,40 @@ static func _box(c: CanvasItem, x: float, y: float, w: float, h: float, color: C
 	var top := roundf(y)
 	c.draw_rect(Rect2(left, top, maxf(1.0, roundf(x + w) - left), maxf(1.0, roundf(y + h) - top)), color)
 
-# Coordinates appear only when several real units are condensed into one visible region.
-static func _coordinates(c: CanvasItem, a: Rect2, label: String) -> Rect2:
-	var font := ThemeDB.fallback_font
-	var font_size := 11
-	var right := a.end.x - 2.0
-	var baseline := a.end.y - font.get_descent(font_size)
-	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	c.draw_string(font, Vector2(maxf(a.position.x, right - width), baseline), label, HORIZONTAL_ALIGNMENT_LEFT, a.size.x, font_size, DIM)
-	return Rect2(a.position, Vector2(a.size.x, maxf(1.0, a.size.y - 16.0)))
-
-# Integer points with x² + y² ≤ r² (r = step + 1). The newest rim, (r-1)² < d² ≤ r², is bright and grows in on the tap.
+# Reveal the integer points on the actual annulus, in the order the expanding circle meets them.
 static func lattice(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
 	var r := mini(now, INT_MAX - 1) + 1
-	var rb := mini(before, INT_MAX - 1) + 1
-	var mid := a.get_center()
-	var s := minf(a.size.x, a.size.y)
-	var narrow := 4.0 if s >= 120.0 else 3.0
-	var p := floorf(s / (2.0 * r + 3.0))
-	var radius := lerpf(rb, r, e)
-	if p >= narrow and r <= 48: # the whole disc fits
-		p = minf(p, 14.0)
-		c.draw_arc(mid, radius * p, 0.0, TAU, 96, OUTLINE, 1.25, true)
-		for x in range(-r, r + 1):
-			var reach := int(sqrt(float(r * r - x * x)))
-			for y in range(-reach, reach + 1):
-				var distance := x * x + y * y
-				_lattice_point(c, mid + Vector2(x, -y) * p, p, distance > (r - 1) * (r - 1), distance > (rb - 1) * (rb - 1), rb < r, e)
+	var origin := a.get_center()
+	var extent := minf(a.size.x, a.size.y) * 0.46
+	var pitch := minf(22.0, extent / (float(r) + 0.55))
+	var tapping := before < now
+	var sweep := float(r - 1) + e if tapping else float(r)
+	var old_radius := (r - 1) * pitch
+	if pitch < 3.2:
+		c.draw_circle(origin, old_radius, SHADE, true, -1.0, true)
+	c.draw_arc(origin, r * pitch, 0, TAU, 112, OUTLINE, 1.0, true)
+	if tapping and old_radius > 0.0:
+		c.draw_arc(origin, old_radius, 0, TAU, 112, DIM, 1.0, true)
+	c.draw_arc(origin, maxf(0.1, sweep * pitch), 0, TAU, 112, INK, 1.5, true)
+	# At subpixel spacing the disc is continuous at this resolution.
+	if r > 320:
 		return
-	# Keep the entire circle in view alongside a magnification of its moving frontier.
-	var overview := Vector2(a.position.x + a.size.x * 0.23, mid.y)
-	var overview_r := minf(a.size.x * 0.18, a.size.y * 0.40)
-	var scale := overview_r / maxf(48.0, r)
-	var dir := Vector2(0.8, 0.6)
-	c.draw_circle(overview, radius * scale, SHADE)
-	c.draw_arc(overview, radius * scale, 0.0, TAU, 96, INK, 2.0, true)
-	var boundary := overview + Vector2(dir.x, -dir.y) * (radius * scale)
-	var focus := Rect2(a.position.x + a.size.x * 0.49, a.position.y + a.size.y * 0.14, a.size.x * 0.48, a.size.y * 0.72)
-	c.draw_dashed_line(boundary, Vector2(focus.position.x, mid.y), OUTLINE, 1.0, 4.0)
-	c.draw_rect(Rect2(boundary - Vector2.ONE * 2, Vector2.ONE * 4), WHITE)
-
-	p = clampf(floorf(minf(focus.size.x / 21.0, focus.size.y / 15.0)), 3.0, 10.0)
-	var q := r / 5
-	var residual := r % 5
-	var nx := mini(20, maxi(1, floori(focus.size.x / (2.0 * p)) - 4))
-	var ny := mini(14, maxi(1, floori(focus.size.y / (2.0 * p)) - 3))
-	for dx in range(-nx, nx + 1):
-		for dy in range(-ny, ny + 1):
-			var at := focus.get_center() + (Vector2(dx, -dy) - Vector2(0.8, -0.6) * residual) * p
-			if _rim_inside(q, residual, dx, dy):
-				var rim := not _rim_inside(q, residual - 1, dx, dy)
-				var previous_rim := not _rim_inside(q, residual - 2, dx, dy)
-				_lattice_point(c, at, p, rim, previous_rim, rb < r, e)
-			else:
-				c.draw_rect(Rect2(at.round(), Vector2.ONE), FILL)
-
-# Center the local lattice window at (4q, 3q), where r = 5q + residual.
-# Expanding the squared distances cancels the q² terms, keeping this exact for large r.
-static func _rim_inside(q: int, residual: int, dx: int, dy: int) -> bool:
-	var linear := 4 * dx + 3 * dy - 5 * residual
-	var constant := dx * dx + dy * dy - residual * residual
-	if linear != 0 and q > absi(constant):
-		return linear < 0
-	return 2 * q * linear + constant <= 0
-
-static func _lattice_point(c: CanvasItem, at: Vector2, p: float, rim: bool, previous_rim: bool, tapping: bool, e: float) -> void:
-	var side := maxf(1.0, (p - 1.0) * (e if rim and tapping else 1.0)) if rim else maxf(1.0, p - 2.0)
-	var color := WHITE if rim else FILL.lerp(DIM, 0.6)
-	if tapping and not rim and previous_rim:
-		color = WHITE.lerp(color, e)
-	_box(c, at.x - side / 2.0, at.y - side / 2.0, side, side, color)
+	var outer_squared := r * r
+	var inner_squared := (r - 1) * (r - 1)
+	for x in range(-r, r + 1):
+		var last_y := floori(sqrt(outer_squared - x * x))
+		var inner_y := floori(sqrt(inner_squared - x * x)) if absi(x) < r else -1
+		if pitch >= 3.2:
+			for y in range(-inner_y, inner_y + 1):
+				c.draw_circle(origin + Vector2(x, y) * pitch, maxf(0.8, pitch * 0.24), DIM)
+		for y in range(inner_y + 1, last_y + 1):
+			var distance := sqrt(x * x + y * y)
+			var reached := not tapping or distance <= sweep
+			var color := WHITE if reached and now > 0 else (DIM if reached else FILL)
+			var dot := clampf(pitch * (0.30 if reached else 0.10), 0.55, 6.5)
+			c.draw_circle(origin + Vector2(x, y) * pitch, dot, color)
+			if y > 0:
+				c.draw_circle(origin + Vector2(x, -y) * pitch, dot, color)
 
 # n grains dropped on the origin settle by toppling (≥2 grains → one to each side). Stable pile: |x| ≤ n/2, and the
 # origin is empty exactly when n is even. even → odd just fills the origin; odd → even splits and travels outward.
@@ -175,125 +134,79 @@ static func _sand(x: int, k: int, m: int) -> int:
 		return 0
 	return 1 if ax <= m + 1 else 0
 
-# S(k) = sum G(i); T(k) = sum i*G(i) = S(S(k)); U(k) = T(S(k)).
-# The folded prefix locates the run using two short inverse searches.
-static func _g(n: int) -> int:
-	while _folded[-1] < n:
-		var j := _golomb.size()
-		var g := 1 + _golomb[j - _golomb[_golomb[j - 1]]]
-		var prev := _prefix[-1]
-		var block := j * (g * prev + _tri(g))
-		_golomb.append(g)
-		_prefix.append(prev + g)
-		_weighted.append(_weighted[-1] + j * g)
-		_folded.append(_folded[-1] + mini(block, INT_MAX - _folded[-1]))
-	var k := _folded.bsearch(n)
-	var offset := n - _folded[k - 1]
-	var skip := _prefix[k - 1]
-	var low := 1
-	var high := _golomb[k]
-	while low < high:
-		var mid := (low + high) / 2
-		if k * (mid * skip + _tri(mid)) < offset:
-			low = mid + 1
-		else:
-			high = mid
-	var j := skip + low
-	var rem := offset - k * ((low - 1) * skip + _tri(low - 1)) - 1
-	return _weighted[k - 1] + k * (low - 1) + 1 + rem / j
-
-# A fixed-height strip. Runs share a shade and each visible cell shows its actual term.
+# A fixed-height tape. The holes separate cells; shade and a seam separate real runs.
 static func golomb(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
 	var head := mini(now, INT_MAX - 4) + 1
-	var cw := clampf(floorf(a.size.x / 13.0), 20.0, 34.0)
-	var height := minf(32.0, a.size.y * 0.52)
-	var slots := maxi(1, floori(a.size.x / cw))
+	var cw := clampf(floorf(a.size.x / 12.0), 24.0, 44.0)
+	var height := minf(54.0, a.size.y * 0.60)
+	var slots := clampi(floori(a.size.x / cw), 1, 12)
 	var hi := head + mini(3, slots - 1)
 	var lo := maxi(1, hi - slots + 1)
-	var font := ThemeDB.fallback_font
-	var font_size := 14
 	var x0 := a.get_center().x - slots * cw / 2.0
 	var y := a.get_center().y - height * 0.5
-	var baseline := y + (height - font.get_height(font_size)) * 0.5 + font.get_ascent(font_size)
+	var hole := minf(cw * 0.085, height * 0.09)
 	# Paper travels horizontally only when the head would leave its window.
 	var scrolling := lo > 1 and before < now and e < 1.0
 	var shift := (1.0 - e) if scrolling else 0.0
 	var tape := Rect2(x0, y, slots * cw, height)
-	var previous := _g(lo - 1 if scrolling else lo)
+	var previous := Growth.golomb(lo - 1 if scrolling else lo)
 	for relative in range(-1 if scrolling else 0, hi - lo + 1):
 		var i := lo + relative
-		var value := _g(i)
+		var value := Growth.golomb(i)
 		var x := x0 + (relative + shift) * cw
 		var color := FILL if value & 1 else SHADE
 		if i == head:
 			color = INK
 		elif i > head:
 			color = color.darkened(0.35)
-		var visible := Rect2(x, y, cw - 1.0, height).intersection(tape)
+		var visible := Rect2(x, y, cw, height).intersection(tape)
 		if visible.has_area():
 			c.draw_rect(visible, color)
 		if value != previous and x > tape.position.x and x < tape.end.x:
 			c.draw_line(Vector2(x - 0.5, y - 2.0), Vector2(x - 0.5, y + height + 2.0), DIM, 1.0)
 		previous = value
 
-		var term := str(value)
-		var width := font.get_string_size(term, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		if width <= cw - 4.0:
-			var text_x := x + (cw - width) * 0.5
-			if text_x < tape.position.x or text_x + width > tape.end.x:
-				continue
-			var ink := SHADE if i == head else (DIM if i > head else WHITE)
-			c.draw_string(font, Vector2(text_x, baseline), term, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ink)
-		elif i == head:
-			var label := "G(%d) = %d" % [i, value]
-			var label_size := font_size
-			var label_width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x
-			if font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > a.size.x:
-				label = term
-				label_width = width
-			while label_width > a.size.x and label_size > 8:
-				label_size -= 1
-				label_width = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, label_size).x
-			var label_x := maxf(a.position.x, a.get_center().x - label_width * 0.5)
-			c.draw_string(font, Vector2(label_x, y - 5.0), label, HORIZONTAL_ALIGNMENT_LEFT, a.size.x, label_size, INK)
+		var center := x + cw * 0.5
+		if center - hole >= tape.position.x and center + hole <= tape.end.x:
+			for row in [0.18, 0.82]:
+				c.draw_circle(Vector2(center, y + height * row), hole, Color.BLACK, true, -1.0, true)
 
-# Eight increments around a wave. Columns fill as the lap goes; each finished lap leaves a block on the top row.
-static func wave(c: CanvasItem, now: int, a: Rect2) -> void:
-	var cw := clampf(floorf(a.size.x / 12.0), 6.0, 30.0)
-	var unit := clampf(floorf(a.size.y * 0.5 / 5.0), 2.0, 16.0)
-	var x0 := a.get_center().x - cw * 4.0
-	var applied := (now - 1) % 8 if now > 0 else -1
-	var lap_full := now > 0 and now % 8 == 0
+# The cursor follows one period of the actual increments.
+static func wave(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+	var count := Growth.WAVE.size()
+	var span := minf(a.size.x * 0.84, 360.0)
+	var unit := minf(a.size.y * 0.12, 20.0)
+	var x0 := a.get_center().x - span * 0.5
+	var baseline := a.get_center().y + unit * 3.0
 	var tops := PackedVector2Array()
-	for i in range(8):
-		var h: float = Growth.WAVE[i] * unit
-		var x := x0 + i * cw
-		tops.append(Vector2(x + (cw - 1.0) / 2.0, a.end.y - h))
-		if i == applied:
-			_box(c, x, a.end.y - h, cw - 1.0, h, INK)
-		elif lap_full or i < now % 8:
-			_box(c, x, a.end.y - h, cw - 1.0, h, DIM)
-		else:
-			c.draw_rect(Rect2(roundf(x), a.end.y - h, cw - 1.0, 1), OUTLINE)
+	for i in range(count):
+		tops.append(Vector2(x0 + i * span / (count - 1), baseline - Growth.WAVE[i] * unit))
 	var curve := PackedVector2Array([tops[0]])
-	for i in range(1, tops.size()):
+	for i in range(1, count):
 		for sample in range(1, 9):
 			var t := sample / 8.0
 			curve.append(Vector2(lerpf(tops[i - 1].x, tops[i].x, t), lerpf(tops[i - 1].y, tops[i].y, smoothstep(0.0, 1.0, t))))
-	c.draw_polyline(curve, OUTLINE, 1.5, true)
-	var laps := now / 8
-	var capacity := int(a.size.x / 7.0)
-	if laps > capacity:
-		var bits := Growth._bit_length(laps)
-		var cell := minf(7.0, a.size.x / (bits + 2.0))
-		for i in range(bits):
-			var on := (laps >> (bits - 1 - i)) & 1
-			_box(c, a.get_center().x + (i - bits / 2.0) * cell, a.position.y, cell * 0.68, 5.0, INK if on else SHADE)
+	c.draw_polyline(curve, DIM, 1.5, true)
+	for point in tops:
+		c.draw_circle(point, 2.1, DIM, true, -1.0, true)
+	if now == 0:
 		return
-	var shown := laps
-	for i in range(shown):
-		var newest := i == shown - 1 and lap_full
-		_box(c, a.get_center().x - shown * 3.5 + i * 7.0, a.position.y, 5.0, 5.0, INK if newest else DIM)
+	var applied := (now - 1) % count
+	var point := tops[applied]
+	var cursor := point
+	var cursor_ink := INK
+	if before < now and before > 0:
+		var previous := (before - 1) % count
+		if applied > previous:
+			cursor = Vector2(lerpf(tops[previous].x, point.x, e), lerpf(tops[previous].y, point.y, smoothstep(0.0, 1.0, e)))
+		else:
+			# An eight-term period wraps to the first onscreen sample.
+			var on_old_side := e < 0.5
+			cursor = tops[previous] if on_old_side else point
+			cursor_ink.a = absf(2.0 * e - 1.0)
+	elif before == 0 and before < now:
+		cursor_ink.a = e
+	c.draw_circle(cursor, minf(4.0, a.size.y * 0.16), cursor_ink, true, -1.0, true)
 
 # The number being added is the binary length of the step. Bits show it as a counter; the bars show how slowly it climbs.
 static func log_add(c: CanvasItem, now: int, a: Rect2) -> void:
@@ -325,31 +238,53 @@ static func log_add(c: CanvasItem, now: int, a: Rect2) -> void:
 		var jump := step == now or len != Growth._bit_length(step - 1)
 		_box(c, a.get_center().x - count * bw / 2.0 + i * bw, y - 5.0 - h, bw - 1.0, h, INK if jump else DIM)
 
-# One dot per press. Row k completes at T_k. Narrow windows combine adjacent dots into fractional-width bars.
-static func triangular(c: CanvasItem, now: int, a: Rect2) -> void:
-	var t := _tri_root(now)
-	var filled := now - _tri(t)
-	var hi := t + (1 if filled > 0 else 0)
-	var p := clampf(floorf(minf(a.size.x, a.size.y) / maxf(1.0, hi)), 3.0, 14.0)
-	var f := ceili(float(maxi(1, hi)) / maxi(4, int(a.size.x / p))) # dots per drawn cell
-	var lo := maxi(1, hi - int(a.size.y / p) + 1)
-	for k in range(lo, hi + 1):
-		var len := k if k <= t else filled
-		var slots := ceili(float(k) / f)
-		var lit := ceili(float(len) / f)
-		var x0 := a.get_center().x - slots * p / 2.0
-		var y := a.end.y - (hi - k + 1) * p
-		for i in range(slots):
-			var newest := now > 0 and k == (t if filled == 0 else t + 1) and i == lit - 1
-			if i >= lit:
-				c.draw_rect(Rect2(roundf(x0 + i * p), roundf(y), p - 1.0, p - 1.0), SHADE)
-				continue
-			var width := p - 1.0
-			if len < k:
-				width *= clampf(float(len - i * f) / mini(f, k - i * f), 0.0, 1.0)
-			c.draw_rect(Rect2(x0 + i * p, y, width, p - 1.0), INK if newest else DIM)
-	if now == 0:
-		_box(c, a.get_center().x - 2.0, a.end.y - 4.0, 3.0, 3.0, SHADE)
+# One dot per press, with a score bonus of T_k when row k finishes.
+static func triangular(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+	var completed := _tri_root(now)
+	var filled := now - _tri(completed)
+	var newest_row := maxi(1, completed + int(filled > 0))
+	var burst := now > 0 and filled == 0
+	var fill := e if before < now else 1.0
+	var row_ink := DIM.lerp(INK, smoothstep(0.45, 1.0, fill)) if burst else DIM
+	var height := minf(144.0, a.size.y * 0.84)
+	var span := minf(a.size.x * 0.86, height * 1.55)
+	var pitch := minf(18.0, minf(height, span) / newest_row)
+	var center := a.get_center().x
+	var diagram_bottom := a.end.y - 2.0
+	var top := diagram_bottom - height
+	if pitch >= 5.0:
+		top = diagram_bottom - newest_row * pitch
+		for row in range(1, newest_row + 1):
+			var length := row if row <= completed else filled
+			var left := center - row * pitch * 0.5
+			var y := top + (row - 1) * pitch
+			var side := pitch - 2.0
+			for col in range(row):
+				var at := Vector2(left + col * pitch + 1.0, y + 1.0)
+				if row == newest_row and col == length - 1:
+					c.draw_rect(Rect2(at, Vector2.ONE * side), SHADE)
+					if fill > 0.0:
+						c.draw_rect(Rect2(at, Vector2(side * fill, side)), INK)
+				else:
+					var ink := SHADE if col >= length else (row_ink if row == newest_row else DIM)
+					c.draw_rect(Rect2(at, Vector2.ONE * side), ink)
+	else:
+		# Preserve the full triangular profile as the lower rows approach equal width.
+		# Each strip samples a real row, including the exact newest row at the base.
+		var rows := clampi(floori(height / 4.0), 2, 32)
+		var spacing := height / rows
+		var cell := span / newest_row
+		for i in range(rows):
+			var row := 1 + i * (newest_row - 1) / (rows - 1)
+			var length := row if row <= completed else filled
+			var left := center - row * cell * 0.5
+			var y := top + i * spacing
+			var bar_height := maxf(1.0, spacing - 1.5)
+			var latest := row == newest_row
+			var width := (length - (1.0 - fill if latest else 0.0)) * cell
+			if width < row * cell:
+				c.draw_rect(Rect2(left, y, row * cell, bar_height), SHADE)
+			c.draw_rect(Rect2(left, y, width, bar_height), row_ink if latest else DIM)
 
 # Row r of Rule 90 from one lit cell: cell (r, x) is lit iff C(r, (r+x)/2) is odd, i.e. j & r == j.
 # Once the triangle outgrows the stage the window clings to the newest row's left corner (the centre of a wide row is mostly empty).
@@ -448,39 +383,59 @@ static func _tri_root(s: int) -> int:
 		k += 1
 	return k
 
-# Ferrers shape of one representative partition of s: rows k, k-1, … 1 with the leftover blocks added one per row. Each press adds one block.
-static func ferrers(c: CanvasItem, s: int, a: Rect2) -> void:
-	var k := maxi(1, _tri_root(s))
-	var extra := s - _tri(k)
-	var p := minf(16.0, floorf(minf(a.size.x, a.size.y) / (k + 1.0)))
-	var x0 := a.get_center().x - (k + 1) * p / 2.0
-	var y0 := a.end.y - k * p
-	var new_row := extra if extra > 0 else k
-	var new_col := k - extra + 1 if extra > 0 else 0
-	if p < 2.0 or k > 64:
-		# Sample real rows and mark the actual new block in a scaled overview.
-		var side := minf(a.size.x, a.size.y) - 2.0
-		var left := a.get_center().x - side * 0.5
-		var rows := clampi(floori(side / 3.0), 1, 64)
-		for i in range(rows):
-			var row := 1 + i * (k - 1) / maxi(1, rows - 1)
-			var length := k + 1 - row + int(row <= extra)
-			var y := a.end.y - side + i * side / rows
-			_box(c, left, y, float(length) * side / (k + 1.0), side / rows - 1.0, DIM)
-		var at := Vector2(left + new_col * side / (k + 1.0), a.end.y - side + (new_row - 1) * side / k)
-		c.draw_circle(at, 1.5, INK)
-		return
-	for row in range(1, k + 1):
-		var length := k + 1 - row + (1 if row <= extra else 0)
-		var y := y0 + (row - 1) * p
-		if p >= 4.0:
-			for col in range(length):
-				var newest := row == new_row and col == new_col
-				_box(c, x0 + col * p, y, p - 1.0, p - 1.0, INK if newest else DIM)
-		else:
-			_box(c, x0, y, length * p - 1.0, p - 1.0, DIM)
-			if row == new_row:
-				_box(c, x0 + new_col * p, y, p - 1.0, p - 1.0, INK)
+# Removing one singleton gives a bijection to the previous size. The two
+# remaining partitions of four have no singleton and are genuinely new.
+static func _partition_samples(s: int) -> Array[Array]:
+	if s == 3:
+		return [[3], [2, 1], [1, 1, 1]]
+	if s == 4:
+		return [[3, 1], [2, 1, 1], [1, 1, 1, 1], [4], [2, 2]]
+	return [[s], [s - 1, 1], [s - 2, 2]]
+
+static func ferrers(c: CanvasItem, now: int, before: int, e: float, a: Rect2) -> void:
+	var s := mini(now, INT_MAX - 3) + 3
+	var examples := _partition_samples(s)
+	var unit := minf(14.0, minf(a.size.x / 20.0, a.size.y / (12.0 if s <= 4 else 7.0)))
+	var spacing := unit * 1.18
+	var slot := minf(a.size.x / 3.0, unit * 7.5)
+	for i in examples.size():
+		var regroup := s == 4 and i >= 3
+		var mid := a.get_center().x + (i - (3.5 if regroup else 1.0)) * slot
+		var ground := a.get_center().y - unit if s <= 4 and not regroup else a.end.y - unit * 0.4
+		var top := a.get_center().y + unit * 0.25 if regroup else a.position.y + unit * 0.3
+		var actual: Array = examples[i]
+		var added := s == 4 and not regroup
+		var motion := s == 4 and before < now
+		var progress := 1.0
+		if motion:
+			progress = clampf((e - 0.38) / 0.62, 0.0, 1.0) if regroup else clampf(e / 0.44, 0.0, 1.0)
+		if regroup and motion and e < 0.38:
+			continue
+		_partition_piles(c, actual, mid, ground, top, unit, spacing, added, regroup, progress)
+
+static func _partition_piles(c: CanvasItem, sizes: Array, mid: float, ground: float, top: float, unit: float, spacing: float, added: bool, regroup: bool, progress: float) -> void:
+	var prior_columns := sizes.size() - int(added)
+	var left := mid - (prior_columns - 1) * spacing * 0.5
+	var visible_rows := maxi(1, floori((ground - top) / spacing))
+	var placed := 0
+	for column in sizes.size():
+		var rows: int = sizes[column]
+		for row in mini(rows, visible_rows):
+			var at := Vector2(left + column * spacing, ground - (row + 0.5) * spacing)
+			var color := INK
+			if added and column == sizes.size() - 1:
+				at.y -= (1.0 - progress) * unit * 1.8
+				color.a = progress
+			elif regroup:
+				# The same four visible blocks move from a loose row into two alternative arrangements.
+				at = Vector2(mid + (placed - 1.5) * spacing, ground - 0.5 * spacing).lerp(at, progress)
+			c.draw_rect(Rect2(at - Vector2.ONE * unit * 0.46, Vector2.ONE * unit * 0.92), color)
+			placed += 1
+		if rows > visible_rows:
+			# The tall pile continues above this drawing window. Do not fake a whole stack.
+			var x := left + column * spacing
+			var y := ground - (visible_rows - 0.5) * spacing
+			c.draw_rect(Rect2(x - unit * 0.46, top, unit * 0.92, maxf(0.0, y - top)), INK)
 
 # Blocks are repacked into the biggest squares that fit (1, 4, 9, …).
 static func squares(c: CanvasItem, s: int, a: Rect2) -> void:
@@ -539,12 +494,8 @@ static func plane(c: CanvasItem, s: int, a: Rect2) -> void:
 	var u := minf(14.0, minf(a.size.x, a.size.y) / (2.0 * span + 6.0))
 	var v := u * 0.7
 	var origin := Vector2(a.get_center().x, a.get_center().y)
-	# Follow the newest top in both plane axes and height. The visible columns
-	# start at a real horizontal cut through the partition.
+	# The visible columns start at a real horizontal cut through the partition.
 	var new_height := d - newest_i - newest_j + int(rem > 0)
-	if not whole:
-		a = _coordinates(c, a, "i %d · j %d · k %d" % [newest_i, newest_j, new_height - 1])
-		origin = a.get_center()
 	var cut := 0 if whole else maxi(0, new_height - 4)
 	for sum in range(i0 + j0, mini(d, i1 + j1) + 1):
 		for i in range(maxi(i0, sum - j1), mini(i1, sum - j0) + 1):
@@ -566,16 +517,6 @@ static func plane(c: CanvasItem, s: int, a: Rect2) -> void:
 			var face := WHITE if newest else (INK if fresh else DIM)
 			c.draw_colored_polygon(PackedVector2Array([top, right, front, left]), face)
 			c.draw_polyline(PackedVector2Array([top, right, front, left, top]), SHADE, 1.0, true)
-	if not whole:
-		# The rail locates the sampled cube on its full shell, including the last cube at a boundary.
-		var diagonal := d if rem > 0 else d - 1
-		var index := rem if rem > 0 else _tri(d)
-		var left := a.position.x + 2.0
-		var right := a.end.x - 2.0
-		var y := a.end.y - 2.0
-		c.draw_line(Vector2(left, y), Vector2(right, y), OUTLINE, 1.0)
-		var x := lerpf(left, right, float(index) / _tri(diagonal + 1))
-		c.draw_circle(Vector2(x, y), 1.5, INK, true, -1.0, true)
 
 static func _diagonal_start(d: int, i: int) -> int:
 	return i * (d + 1) - _tri(i - 1)
